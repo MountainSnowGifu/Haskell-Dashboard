@@ -1,0 +1,15 @@
+Raw エンドポイントでWAIアプリとして差し込む
+
+Raw で差し込む形に絞って、Servant側ルーティングの中へ wai-websockets / WAIアプリをどう載せるかを整理しています。動く形の骨格と、どこまでをServantに任せてどこからをWAIに落とすかをはっきりさせます。
+
+思考時間: 8s
+
+はい。Raw を使うと、Servant の API ツリーの一部に任意の WAI Application をそのまま差し込めます。Servant公式チュートリアルでも、Raw は「ここに任意のWAIアプリを挿す」という意味だと説明されています。
+
+WebSocket をこの形で載せるときの考え方はこうです。
+
+Servant は通常の JSON API を担当
+/ws だけ Raw にして、そこで wai-websockets を使う
+同じポートで HTTP と WebSocket を共存させる
+
+さらに、Haskellコミュニティでも “Raw endpoints in servant allow you to serve arbitrary wai applications, including a websocket server.” という形で案内されていま
