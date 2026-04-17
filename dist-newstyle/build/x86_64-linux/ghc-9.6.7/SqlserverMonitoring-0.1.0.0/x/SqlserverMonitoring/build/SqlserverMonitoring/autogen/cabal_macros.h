@@ -20,6 +20,16 @@
   (major1) == 2 && (major2) <  2 || \
   (major1) == 2 && (major2) == 2 && (minor) <= 3)
 #endif /* MIN_VERSION_aeson */
+/* package async-2.2.6 */
+#ifndef VERSION_async
+#define VERSION_async "2.2.6"
+#endif /* VERSION_async */
+#ifndef MIN_VERSION_async
+#define MIN_VERSION_async(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  2 || \
+  (major1) == 2 && (major2) == 2 && (minor) <= 6)
+#endif /* MIN_VERSION_async */
 /* package base-4.18.3.0 */
 #ifndef VERSION_base
 #define VERSION_base "4.18.3.0"
@@ -40,6 +50,26 @@
   (major1) == 0 && (major2) <  11 || \
   (major1) == 0 && (major2) == 11 && (minor) <= 5)
 #endif /* MIN_VERSION_bytestring */
+/* package effectful-core-2.6.1.0 */
+#ifndef VERSION_effectful_core
+#define VERSION_effectful_core "2.6.1.0"
+#endif /* VERSION_effectful_core */
+#ifndef MIN_VERSION_effectful_core
+#define MIN_VERSION_effectful_core(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  6 || \
+  (major1) == 2 && (major2) == 6 && (minor) <= 1)
+#endif /* MIN_VERSION_effectful_core */
+/* package http-types-0.12.4 */
+#ifndef VERSION_http_types
+#define VERSION_http_types "0.12.4"
+#endif /* VERSION_http_types */
+#ifndef MIN_VERSION_http_types
+#define MIN_VERSION_http_types(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  12 || \
+  (major1) == 0 && (major2) == 12 && (minor) <= 4)
+#endif /* MIN_VERSION_http_types */
 /* package mssql-simple-0.6.0.5 */
 #ifndef VERSION_mssql_simple
 #define VERSION_mssql_simple "0.6.0.5"
@@ -80,6 +110,16 @@
   (major1) == 0 && (major2) <  20 || \
   (major1) == 0 && (major2) == 20 && (minor) <= 3)
 #endif /* MIN_VERSION_servant_server */
+/* package stm-2.5.1.0 */
+#ifndef VERSION_stm
+#define VERSION_stm "2.5.1.0"
+#endif /* VERSION_stm */
+#ifndef MIN_VERSION_stm
+#define MIN_VERSION_stm(major1,major2,minor) (\
+  (major1) <  2 || \
+  (major1) == 2 && (major2) <  5 || \
+  (major1) == 2 && (major2) == 5 && (minor) <= 1)
+#endif /* MIN_VERSION_stm */
 /* package text-2.0.2 */
 #ifndef VERSION_text
 #define VERSION_text "2.0.2"
@@ -130,6 +170,16 @@
   (major1) == 0 && (major2) <  2 || \
   (major1) == 0 && (major2) == 2 && (minor) <= 7)
 #endif /* MIN_VERSION_wai_cors */
+/* package wai-websockets-3.0.1.2 */
+#ifndef VERSION_wai_websockets
+#define VERSION_wai_websockets "3.0.1.2"
+#endif /* VERSION_wai_websockets */
+#ifndef MIN_VERSION_wai_websockets
+#define MIN_VERSION_wai_websockets(major1,major2,minor) (\
+  (major1) <  3 || \
+  (major1) == 3 && (major2) <  0 || \
+  (major1) == 3 && (major2) == 0 && (minor) <= 1)
+#endif /* MIN_VERSION_wai_websockets */
 /* package warp-3.4.12 */
 #ifndef VERSION_warp
 #define VERSION_warp "3.4.12"
@@ -140,6 +190,16 @@
   (major1) == 3 && (major2) <  4 || \
   (major1) == 3 && (major2) == 4 && (minor) <= 12)
 #endif /* MIN_VERSION_warp */
+/* package websockets-0.13.0.0 */
+#ifndef VERSION_websockets
+#define VERSION_websockets "0.13.0.0"
+#endif /* VERSION_websockets */
+#ifndef MIN_VERSION_websockets
+#define MIN_VERSION_websockets(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  13 || \
+  (major1) == 0 && (major2) == 13 && (minor) <= 0)
+#endif /* MIN_VERSION_websockets */
 
 /* tool gcc-15 */
 #ifndef TOOL_VERSION_gcc

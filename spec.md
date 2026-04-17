@@ -116,6 +116,60 @@ WHERE counter_name IN (
     'Page life expectancy'
 )
 ORDER BY object_name, counter_name;
+
+改良版
+SELECT object_name, counter_name, instance_name, cntr_value
+FROM sys.dm_os_performance_counters
+WHERE counter_name IN (
+    'Batch Requests/sec',
+    'Transactions/sec',
+    'User Connections',
+    'Lock Waits/sec',
+    'Page life expectancy'
+)
+AND (instance_name = '' OR instance_name = '_Total')
+ORDER BY object_name, counter_name;
+
+sqlcmd -S <サーバ名> -U <ユーザー> -P <パスワード> -Q "SET NOCOUNT ON;
+
+PRINT '=== Active Requests ===';
+SELECT
+    DB_NAME(r.database_id) AS db_name,
+    r.session_id,
+    r.status,
+    r.command,
+    r.cpu_time,
+    r.total_elapsed_time,
+    r.reads,
+    r.writes,
+    r.logical_reads
+FROM sys.dm_exec_requests r
+WHERE r.database_id = DB_ID('YourDB')
+ORDER BY r.cpu_time DESC;
+
+PRINT '=== Sessions ===';
+SELECT
+    DB_NAME(database_id) AS db_name,
+    COUNT(*) AS session_count
+FROM sys.dm_exec_sessions
+WHERE database_id = DB_ID('YourDB')
+GROUP BY database_id;
+
+PRINT '=== File IO ===';
+SELECT
+    mf.name,
+    mf.type_desc,
+    vfs.num_of_reads,
+    vfs.num_of_writes,
+    CASE WHEN vfs.num_of_reads = 0 THEN 0
+         ELSE vfs.io_stall_read_ms / vfs.num_of_reads END AS avg_read_ms,
+    CASE WHEN vfs.num_of_writes = 0 THEN 0
+         ELSE vfs.io_stall_write_ms / vfs.num_of_writes END AS avg_write_ms
+FROM sys.dm_io_virtual_file_stats(NULL, NULL) vfs
+JOIN sys.master_files mf
+    ON vfs.database_id = mf.database_id
+   AND vfs.file_id = mf.file_id
+WHERE mf.database_id = DB_ID('YourDB');"
 ```
 
 ### 2. 現在の接続数

@@ -67,10 +67,13 @@ executable SqlserverMonitoring
                       App.Application.SQLServerDashboard.UseCase,
                       App.Domain.SQLServerDashboard.Entity,
                       App.Domain.SQLServerDashboard.ValueObject,
+                      App.Infrastructure.Broadcast.Channel,
+                      App.Infrastructure.Repository.SQLServerDashboard.SQLServerDashboardSQLServer,
                       App.Presentation.SQLServerDashboard.API,
                       App.Presentation.SQLServerDashboard.Handler,
                       App.Presentation.SQLServerDashboard.Request,
                       App.Presentation.SQLServerDashboard.Response,
+                      App.Presentation.SQLServerDashboard.WSHandler,
                       App.Core.Config,
                       App.Infrastructure.Database.SqlServer,
                       App.Infrastructure.Database.Types,
@@ -98,6 +101,12 @@ executable SqlserverMonitoring
                         , bytestring
                         , unix
                         , network
+                        , websockets
+                        , wai-websockets
+                        , stm
+                        , async
+                        , http-types
+                        , effectful-core
 
     -- Directories containing source files.
     hs-source-dirs:   app, src

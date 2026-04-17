@@ -7,17 +7,24 @@ module App.Presentation.SQLServerDashboard.Response
   )
 where
 
-import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard (..))
+import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard (..))
 import qualified App.Domain.SQLServerDashboard.Entity as Entity
-import App.Domain.SQLServerDashboard.ValueObject (IsServerAlive (..), SqlServerName (..))
+import App.Domain.SQLServerDashboard.ValueObject
+  ( NumOfReads (..),
+    NumOfWrites (..),
+    SqlServerDbName (..),
+    TypeDescription (..),
+  )
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Coerce (coerce)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
 data SQLServerDashboardResponse = SQLServerDashboardResponse
-  { isServerAlive :: Bool,
-    db :: Text
+  { sqlServerDbName :: Text,
+    typeDescription :: Text,
+    numOfReads :: Int,
+    numOfWrites :: Int
   }
   deriving (Show, Generic)
 
@@ -25,10 +32,13 @@ instance ToJSON SQLServerDashboardResponse
 
 instance FromJSON SQLServerDashboardResponse
 
-toCreatedBoardResponse :: MssqlHealthDashboard -> SQLServerDashboardResponse
+toCreatedBoardResponse :: MssqlFileIoDashboard -> SQLServerDashboardResponse
 toCreatedBoardResponse dashboard =
   SQLServerDashboardResponse
-    { isServerAlive = coerce (Entity.isServerAlive dashboard),
-      db = case Entity.sqlServerName dashboard of
-        SqlServerName name -> name
+    { sqlServerDbName = case Entity.sqlServerDbName dashboard of
+        SqlServerDbName name -> name,
+      typeDescription = case Entity.typeDescription dashboard of
+        TypeDescription desc -> desc,
+      numOfReads = coerce (Entity.numOfReads dashboard),
+      numOfWrites = coerce (Entity.numOfWrites dashboard)
     }

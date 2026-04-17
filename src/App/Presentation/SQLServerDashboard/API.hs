@@ -9,4 +9,6 @@ where
 import App.Presentation.SQLServerDashboard.Response
 import Servant
 
-type SQLServerDashboardAPI = "sqlserver-dashboard" :> Get '[JSON] SQLServerDashboardResponse
+type SQLServerDashboardAPI =
+  "sqlserver-dashboard" :> Get '[JSON] SQLServerDashboardResponse
+    :<|> "sqlserver-dashboard" :> "ws" :> Raw

@@ -2,16 +2,32 @@
 
 module App.Domain.SQLServerDashboard.Entity
   ( MssqlHealthDashboard (..),
+    MssqlFileIoDashboard (..),
   )
 where
 
--- MssqlHealthDashboard
-
-import App.Domain.SQLServerDashboard.ValueObject (IsServerAlive, SqlServerName)
+import App.Domain.SQLServerDashboard.ValueObject
+  ( IsServerAlive,
+    NumOfReads,
+    NumOfWrites,
+    SqlServerDbName,
+    SqlServerIp,
+    SqlServerName,
+    TypeDescription,
+  )
 import GHC.Generics (Generic)
 
 data MssqlHealthDashboard = MssqlHealthDashboard
   { isServerAlive :: IsServerAlive,
-    sqlServerName :: SqlServerName
+    sqlServerName :: SqlServerName,
+    sqlServerIp :: SqlServerIp
+  }
+  deriving (Show, Eq, Generic)
+
+data MssqlFileIoDashboard = MssqlFileIoDashboard
+  { sqlServerDbName :: SqlServerDbName,
+    typeDescription :: TypeDescription,
+    numOfReads :: NumOfReads,
+    numOfWrites :: NumOfWrites
   }
   deriving (Show, Eq, Generic)
