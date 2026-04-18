@@ -1,3 +1,5 @@
 curl -v http://localhost:8081/health 2>&1 ; echo
 curl -v http://localhost:8081/sqlserver-dashboard 2>&1 ; echo
+curl -v http://localhost:8081/sqlserver-dashboard/connections 2>&1 ; echo
+
 

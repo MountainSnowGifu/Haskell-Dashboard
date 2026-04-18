@@ -1,29 +1,26 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
 module App.Presentation.SQLServerDashboard.Handler
-  ( SqlServerDashboardRunner,
-    sqlServerDashboardHandler,
+  ( sqlServerDashboardHandler,
+    sqlServerConnectionsHandler,
   )
 where
 
-import App.Application.SQLServerDashboard.Repository (DashboardRepo)
-import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard (..))
-import App.Domain.SQLServerDashboard.ValueObject (NumOfReads (..), NumOfWrites (..), SqlServerDbName (..), TypeDescription (..))
-import App.Presentation.SQLServerDashboard.Response (SQLServerDashboardResponse, toCreatedBoardResponse)
-import Effectful (Eff, IOE)
+import App.Application.SQLServerDashboard.UseCase (DashboardRunner, fetchMssqlFileIoDashboard)
+import App.Presentation.SQLServerDashboard.Response (ConnectionCountResponse (..), SQLServerDashboardResponse, toDashboardResponse)
+import Control.Concurrent.STM (TVar, readTVarIO)
+import Control.Monad.IO.Class (liftIO)
 import Servant
 
-type SqlServerDashboardRunner = forall a. Eff '[DashboardRepo, IOE] a -> IO a
+sqlServerDashboardHandler :: DashboardRunner -> Handler SQLServerDashboardResponse
+sqlServerDashboardHandler runner = do
+  mBoard <- liftIO $ runner fetchMssqlFileIoDashboard
+  case mBoard of
+    Nothing -> throwError err404
+    Just board -> return (toDashboardResponse board)
 
-sqlServerDashboardHandler :: SqlServerDashboardRunner -> Handler SQLServerDashboardResponse
-sqlServerDashboardHandler _runner = do
-  let dashboard =
-        MssqlFileIoDashboard
-          { sqlServerDbName = SqlServerDbName "SampleDB",
-            typeDescription = TypeDescription "Data File",
-            numOfReads = NumOfReads 100,
-            numOfWrites = NumOfWrites 50
-          }
-  return $ toCreatedBoardResponse dashboard
+sqlServerConnectionsHandler :: TVar Int -> Handler ConnectionCountResponse
+sqlServerConnectionsHandler connCountRef = do
+  count <- liftIO $ readTVarIO connCountRef
+  return (ConnectionCountResponse count)

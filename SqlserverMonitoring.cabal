@@ -63,11 +63,15 @@ executable SqlserverMonitoring
 
     -- Modules included in this executable, other than Main.
     other-modules:    App.Application.SQLServerDashboard.Command,
+                      App.Application.SQLServerDashboard.Notifier,
+                      App.Application.SQLServerDashboard.Subscription,
+                      App.Infrastructure.Polling.SQLServerDashboard,
                       App.Application.SQLServerDashboard.Repository,
                       App.Application.SQLServerDashboard.UseCase,
                       App.Domain.SQLServerDashboard.Entity,
                       App.Domain.SQLServerDashboard.ValueObject,
                       App.Infrastructure.Broadcast.Channel,
+                      App.Infrastructure.Notifier.SQLServerDashboard,
                       App.Infrastructure.Repository.SQLServerDashboard.SQLServerDashboardSQLServer,
                       App.Presentation.SQLServerDashboard.API,
                       App.Presentation.SQLServerDashboard.Handler,

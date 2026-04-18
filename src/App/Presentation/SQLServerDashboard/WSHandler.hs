@@ -5,26 +5,40 @@ module App.Presentation.SQLServerDashboard.WSHandler
   )
 where
 
-import App.Infrastructure.Broadcast.Channel (BroadcastChannel, subscribe)
-import App.Presentation.SQLServerDashboard.Response (SQLServerDashboardResponse)
+import App.Application.SQLServerDashboard.Subscription
+  ( DashboardSubscription (..),
+  )
+import App.Presentation.SQLServerDashboard.Response (toDashboardResponse)
 import Control.Concurrent.STM
-import Control.Exception (SomeException, try)
+import Control.Exception (SomeException, finally, try)
 import Control.Monad (forever)
 import Data.Aeson (encode)
 import Network.WebSockets
 
 sqlServerDashboardWSHandler ::
-  TVar (Maybe SQLServerDashboardResponse) ->
-  BroadcastChannel SQLServerDashboardResponse ->
+  DashboardSubscription ->
+  TVar Int ->
   ServerApp
-sqlServerDashboardWSHandler latestRef chan pendingConn = do
+sqlServerDashboardWSHandler sub connCountRef pendingConn = do
   conn <- acceptRequest pendingConn
-  withPingThread conn 30 (return ()) $ do
-    mLatest <- readTVarIO latestRef
-    mapM_ (sendTextData conn . encode) mLatest
-    readChan <- atomically (subscribe chan)
-    let loop = forever $ do
-          val <- atomically (readTChan readChan)
-          sendTextData conn (encode val)
-    _ <- (try loop :: IO (Either SomeException ()))
-    return ()
+  connectedCount <- atomically $ do
+    modifyTVar' connCountRef (+ 1)
+    readTVar connCountRef
+  putStrLn $ "[WS] connected. connections: " <> show connectedCount
+  finally
+    ( withPingThread conn 30 (return ()) $ do
+        mLatest <- getLatestDashboard sub
+        mapM_ (sendTextData conn . encode . toDashboardResponse) mLatest
+        readChan <- atomically (subscribeDashboardUpdates sub)
+        let loop = forever $ do
+              val <- atomically (readTChan readChan)
+              sendTextData conn (encode (toDashboardResponse val))
+        _ <- (try loop :: IO (Either SomeException ()))
+        return ()
+    )
+    ( do
+        disconnectedCount <- atomically $ do
+          modifyTVar' connCountRef (subtract 1)
+          readTVar connCountRef
+        putStrLn $ "[WS] disconnected. connections: " <> show disconnectedCount
+    )

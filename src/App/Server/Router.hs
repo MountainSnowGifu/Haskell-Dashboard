@@ -6,26 +6,22 @@ module App.Server.Router
   )
 where
 
+import App.Application.SQLServerDashboard.Subscription (DashboardSubscription (..))
+import App.Application.SQLServerDashboard.UseCase (DashboardRunner)
 import App.Core.Config (Config (..))
-import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard (..))
-import App.Domain.SQLServerDashboard.ValueObject
-  ( NumOfReads (..),
-    NumOfWrites (..),
-    SqlServerDbName (..),
-    TypeDescription (..),
-  )
-import App.Infrastructure.Broadcast.Channel (BroadcastChannel, newBroadcastChannel, publish)
+import App.Infrastructure.Broadcast.Channel (newBroadcastChannel, subscribe)
 import App.Infrastructure.Database.Types (MSSQLPool)
+import App.Infrastructure.Notifier.SQLServerDashboard (runDashboardNotifier)
+import App.Infrastructure.Polling.SQLServerDashboard (PollingRunner, pollDashboard)
 import App.Infrastructure.Repository.SQLServerDashboard.SQLServerDashboardSQLServer (runDashboardRepo)
 import App.Presentation.Health.Handler (healthHandler)
-import App.Presentation.SQLServerDashboard.Handler (SqlServerDashboardRunner, sqlServerDashboardHandler)
-import App.Presentation.SQLServerDashboard.Response (SQLServerDashboardResponse, toCreatedBoardResponse)
+import App.Presentation.SQLServerDashboard.Handler (sqlServerConnectionsHandler, sqlServerDashboardHandler)
 import App.Presentation.SQLServerDashboard.WSHandler (sqlServerDashboardWSHandler)
 import App.Server.API (API, combinedAPI)
-import Control.Concurrent (newEmptyMVar, putMVar, takeMVar, threadDelay)
+import Control.Concurrent (newEmptyMVar, putMVar, takeMVar)
 import Control.Concurrent.Async (async, cancel)
-import Control.Concurrent.STM (TVar, atomically, newTVarIO, writeTVar)
-import Control.Monad (forever, void)
+import Control.Concurrent.STM (TVar, newTVarIO, readTVarIO)
+import Control.Monad (void)
 import Data.Function ((&))
 import Effectful (runEff)
 import Network.HTTP.Types (status400)
@@ -43,14 +39,13 @@ import Network.WebSockets (defaultConnectionOptions)
 import Servant
 import System.Posix.Signals (Handler (..), installHandler, sigINT, sigTERM)
 
-server :: MSSQLPool -> TVar (Maybe SQLServerDashboardResponse) -> BroadcastChannel SQLServerDashboardResponse -> Server API
-server pool latestRef chan =
+server :: DashboardRunner -> DashboardSubscription -> TVar Int -> Server API
+server runner sub connCountRef =
   healthHandler
     :<|> sqlServerDashboardHandler runner
-    :<|> Tagged (websocketsOr defaultConnectionOptions (sqlServerDashboardWSHandler latestRef chan) fallback)
+    :<|> Tagged (websocketsOr defaultConnectionOptions (sqlServerDashboardWSHandler sub connCountRef) fallback)
+    :<|> sqlServerConnectionsHandler connCountRef
   where
-    runner :: SqlServerDashboardRunner
-    runner eff = runEff (runDashboardRepo pool eff)
     fallback _ sendResponse = sendResponse $ responseLBS status400 [] "Not a WebSocket request"
 
 corsPolicy :: CorsResourcePolicy
@@ -61,32 +56,32 @@ corsPolicy =
       corsRequestHeaders = ["Content-Type", "Authorization"]
     }
 
-app :: MSSQLPool -> TVar (Maybe SQLServerDashboardResponse) -> BroadcastChannel SQLServerDashboardResponse -> Application
-app sqlserverPool latestRef chan =
+app :: DashboardRunner -> DashboardSubscription -> TVar Int -> Application
+app runner sub connCountRef =
   cors (const $ Just corsPolicy) $
-    serve combinedAPI (server sqlserverPool latestRef chan)
-
-pollSQLServer :: TVar (Maybe SQLServerDashboardResponse) -> BroadcastChannel SQLServerDashboardResponse -> IO ()
-pollSQLServer latestRef chan = forever $ do
-  let dashboard =
-        MssqlFileIoDashboard
-          { sqlServerDbName = SqlServerDbName "SampleDB",
-            typeDescription = TypeDescription "Data File",
-            numOfReads = NumOfReads 100,
-            numOfWrites = NumOfWrites 50
-          }
-  let response = toCreatedBoardResponse dashboard
-  atomically $ writeTVar latestRef (Just response)
-  publish chan response
-  threadDelay (5 * 1000000)
+    serve combinedAPI (server runner sub connCountRef)
 
 runServant :: Config -> MSSQLPool -> IO ()
 runServant servantConfig sqlserverPool = do
   shutdown <- newEmptyMVar
   latestRef <- newTVarIO Nothing
   broadcastChan <- newBroadcastChannel
+  connCountRef <- newTVarIO (0 :: Int)
 
-  pollingThread <- async (pollSQLServer latestRef broadcastChan)
+  let runner :: DashboardRunner
+      runner eff = runEff (runDashboardRepo sqlserverPool eff)
+
+      pollingRunner :: PollingRunner
+      pollingRunner eff = runEff (runDashboardNotifier latestRef broadcastChan (runDashboardRepo sqlserverPool eff))
+
+      sub :: DashboardSubscription
+      sub =
+        DashboardSubscription
+          { getLatestDashboard = readTVarIO latestRef,
+            subscribeDashboardUpdates = subscribe broadcastChan
+          }
+
+  pollingThread <- async (pollDashboard pollingRunner)
 
   let settings =
         defaultSettings
@@ -103,6 +98,6 @@ runServant servantConfig sqlserverPool = do
                 void $ installHandler sigINT handler Nothing
             )
 
-  runSettings settings (app sqlserverPool latestRef broadcastChan)
+  runSettings settings (app runner sub connCountRef)
   takeMVar shutdown
   putStrLn "サーバーを終了しました"

@@ -1,22 +1,26 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 module App.Presentation.SQLServerDashboard.Response
   ( SQLServerDashboardResponse (..),
-    toCreatedBoardResponse,
+    toDashboardResponse,
+    ConnectionCountResponse (..),
   )
 where
 
-import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard (..))
+import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard)
 import qualified App.Domain.SQLServerDashboard.Entity as Entity
 import App.Domain.SQLServerDashboard.ValueObject
-  ( NumOfReads (..),
-    NumOfWrites (..),
-    SqlServerDbName (..),
+  ( SqlServerDbName (..),
     TypeDescription (..),
+    unNumOfReads,
+    unNumOfWrites,
   )
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Coerce (coerce)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -32,13 +36,22 @@ instance ToJSON SQLServerDashboardResponse
 
 instance FromJSON SQLServerDashboardResponse
 
-toCreatedBoardResponse :: MssqlFileIoDashboard -> SQLServerDashboardResponse
-toCreatedBoardResponse dashboard =
-  SQLServerDashboardResponse
-    { sqlServerDbName = case Entity.sqlServerDbName dashboard of
-        SqlServerDbName name -> name,
-      typeDescription = case Entity.typeDescription dashboard of
-        TypeDescription desc -> desc,
-      numOfReads = coerce (Entity.numOfReads dashboard),
-      numOfWrites = coerce (Entity.numOfWrites dashboard)
-    }
+newtype ConnectionCountResponse = ConnectionCountResponse
+  { connections :: Int
+  }
+  deriving (Show, Generic)
+
+instance ToJSON ConnectionCountResponse
+
+toDashboardResponse :: MssqlFileIoDashboard -> SQLServerDashboardResponse
+toDashboardResponse dashboard =
+  let SqlServerDbName dbName = Entity.sqlServerDbName dashboard
+      TypeDescription typeDesc = Entity.typeDescription dashboard
+      numReads = unNumOfReads (Entity.numOfReads dashboard)
+      numWrites = unNumOfWrites (Entity.numOfWrites dashboard)
+   in SQLServerDashboardResponse
+        { sqlServerDbName = dbName,
+          typeDescription = typeDesc,
+          numOfReads = numReads,
+          numOfWrites = numWrites
+        }
