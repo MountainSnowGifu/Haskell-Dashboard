@@ -16,9 +16,17 @@ where
 import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard, MssqlHealthDashboard, MssqlSessionDashboard)
 import qualified App.Domain.SQLServerDashboard.Entity as Entity
 import App.Domain.SQLServerDashboard.ValueObject
-  ( IsServerAlive (..),
+  ( Command (..),
+    CpuTime (..),
+    IsServerAlive (..),
+    LogicalReads (..),
+    Reads (..),
+    SessionId (..),
     SqlServerDbName (..),
+    Status (..),
+    TotalElapsedTime (..),
     TypeDescription (..),
+    Writes (..),
     unAvgReadMs,
     unAvgWriteMs,
     unNumOfReads,
@@ -86,7 +94,8 @@ data MssqlHealthDashboardResponse = MssqlHealthDashboardResponse
     sqlServerName :: Text,
     sqlServerIp :: Text,
     mssqlFileIoDashboard :: [MssqlFileIoDashboardResponse],
-    mssqlSessionDashboard :: [MssqlSessionDashboardResponse]
+    mssqlSessionDashboard :: [MssqlSessionDashboardResponse],
+    mssqlActiveRequestDashboard :: [MssqlActiveRequestDashboardResponse]
   }
   deriving (Show, Generic)
 
@@ -104,7 +113,56 @@ toMssqlHealthDashboardResponse dashboard =
           sqlServerName = name,
           sqlServerIp = ip,
           mssqlFileIoDashboard = map toMssqlFileIoDashboardResponse (Entity.mssqlFileIoDashboard dashboard),
-          mssqlSessionDashboard = map toMssqlSessionDashboardResponse (Entity.mssqlSessionDashboard dashboard)
+          mssqlSessionDashboard = map toMssqlSessionDashboardResponse (Entity.mssqlSessionDashboard dashboard),
+          mssqlActiveRequestDashboard = map toMssqlActiveRequestDashboardResponse (Entity.mssqlActiveRequestDashboard dashboard)
+        }
+
+data MssqlDbHealthDashboardResponse = MssqlDbHealthDashboardResponse
+  { sqlServerDbName :: Text,
+    mssqlFileIoDashboard :: [MssqlFileIoDashboardResponse],
+    mssqlSessionDashboard :: MssqlSessionDashboardResponse,
+    mssqlActiveRequestDashboard :: [MssqlActiveRequestDashboardResponse]
+  }
+  deriving (Show, Generic)
+
+data MssqlActiveRequestDashboardResponse = MssqlActiveRequestDashboardResponse
+  { arSqlServerDbName :: Text,
+    arSessionId :: Int,
+    arStatus :: Text,
+    arCommand :: Text,
+    arCpuTime :: Int,
+    arTotalElapsedTime :: Int,
+    arReads :: Int,
+    arWrites :: Int,
+    arLogicalReads :: Int
+  }
+  deriving (Show, Generic)
+
+instance ToJSON MssqlActiveRequestDashboardResponse
+
+instance FromJSON MssqlActiveRequestDashboardResponse
+
+toMssqlActiveRequestDashboardResponse :: Entity.MssqlActiveRequestDashboard -> MssqlActiveRequestDashboardResponse
+toMssqlActiveRequestDashboardResponse dashboard =
+  let SqlServerDbName dbName = Entity.arSqlServerDbName dashboard
+      SessionId sessionId = Entity.arSessionId dashboard
+      Status status = Entity.arStatus dashboard
+      Command command = Entity.arCommand dashboard
+      CpuTime cpuTime = Entity.arCpuTime dashboard
+      TotalElapsedTime totalElapsedTime = Entity.arTotalElapsedTime dashboard
+      Reads numReads = Entity.arReads dashboard
+      Writes numWrites = Entity.arWrites dashboard
+      LogicalReads numLogicalReads = Entity.arLogicalReads dashboard
+   in MssqlActiveRequestDashboardResponse
+        { arSqlServerDbName = dbName,
+          arSessionId = sessionId,
+          arStatus = status,
+          arCommand = command,
+          arCpuTime = cpuTime,
+          arTotalElapsedTime = totalElapsedTime,
+          arReads = numReads,
+          arWrites = numWrites,
+          arLogicalReads = numLogicalReads
         }
 
 newtype ConnectionCountResponse = ConnectionCountResponse

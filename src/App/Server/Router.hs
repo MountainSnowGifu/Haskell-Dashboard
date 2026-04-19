@@ -74,7 +74,8 @@ runServant servantConfig sqlserverPool = do
             sqlServerName = "unknown",
             sqlServerIp = "0.0.0.0",
             mssqlFileIoDashboard = [],
-            mssqlSessionDashboard = []
+            mssqlSessionDashboard = [],
+            mssqlActiveRequestDashboard = []
           }
       )
   broadcastChan <- newBroadcastChannel

@@ -27,12 +27,13 @@ fetchMssqlFileIoDashboard dbNames = do
   liftIO $ putStrLn "[DashboardRepo] fetching dashboard data from SQL Server..."
   fileIoRows <- mapM (DashboardRepo.getMssqlFileIoDashboard . CreateMssqlFileIoDashboardCommand) dbNames
   sessionRows <- mapM (DashboardRepo.getMssqlSessionDashboard . CreateMssqlFileIoDashboardCommand) dbNames
-  liftIO $ print sessionRows
+  activeRequestRows <- mapM (DashboardRepo.getMssqlActiveRequestDashboard . CreateMssqlFileIoDashboardCommand) dbNames
   return
     MssqlHealthDashboard
       { isServerAlive = IsServerAlive True, -- 仮の値
         sqlServerName = "testServer", -- 仮の値
         sqlServerIp = "127.0.0.1", -- 仮の値
         mssqlFileIoDashboard = concat fileIoRows,
-        mssqlSessionDashboard = sessionRows
+        mssqlSessionDashboard = sessionRows,
+        mssqlActiveRequestDashboard = concat activeRequestRows
       }

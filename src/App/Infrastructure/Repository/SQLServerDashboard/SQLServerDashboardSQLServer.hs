@@ -12,10 +12,18 @@ where
 
 import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCommand (..))
 import App.Application.SQLServerDashboard.Repository (DashboardRepo (..))
-import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard (..), MssqlSessionDashboard (..))
+import App.Domain.SQLServerDashboard.Entity (MssqlActiveRequestDashboard (..), MssqlFileIoDashboard (..), MssqlSessionDashboard (..))
 import App.Domain.SQLServerDashboard.ValueObject
-  ( SqlServerDbName (..),
+  ( Command (..),
+    CpuTime (..),
+    LogicalReads (..),
+    Reads (..),
+    SessionId (..),
+    SqlServerDbName (..),
+    Status (..),
+    TotalElapsedTime (..),
     TypeDescription (..),
+    Writes (..),
     mkAvgReadMs,
     mkAvgWriteMs,
     mkNumOfReads,
@@ -41,6 +49,9 @@ type SessionRow = (LT.Text, Int)
 
 -- (name, type_desc, num_of_reads, num_of_writes, avg_read_ms, avg_write_ms)
 type FileIoRow = (LT.Text, LT.Text, Int, Int, Int, Int)
+
+-- (db_name, session_id, status, command, cpu_time, total_elapsed_time, reads, writes, logical_reads)
+type ActiveRequestRow = (LT.Text, Int, LT.Text, LT.Text, Int, Int, Int, Int, Int)
 
 sessionQuery :: Text -> Text
 sessionQuery dbName =
@@ -73,6 +84,24 @@ fileIoQuery dbName =
     <> dbName
     <> "')"
 
+activeRequestQuery :: Text -> Text
+activeRequestQuery dbName =
+  "SELECT \
+  \    DB_NAME(r.database_id) AS db_name, \
+  \    CAST(r.session_id AS INT), \
+  \    r.status, \
+  \    r.command, \
+  \    r.cpu_time, \
+  \    r.total_elapsed_time, \
+  \    CAST(r.reads AS INT), \
+  \    CAST(r.writes AS INT), \
+  \    CAST(r.logical_reads AS INT) \
+  \FROM sys.dm_exec_requests r \
+  \WHERE r.database_id = DB_ID('"
+    <> dbName
+    <> "') \
+       \ORDER BY r.cpu_time DESC"
+
 rpcRows :: RpcResponse a b -> IO b
 rpcRows (RpcResponse _ _ rs) = return rs
 rpcRows (RpcResponseError info) = ioError (userError $ "SQL Server error: " ++ show info)
@@ -85,6 +114,20 @@ toSessionEntity (dbName, count) = do
       { sessionCount = sessionCount',
         sessionSqlServerDbName = SqlServerDbName (LT.toStrict dbName)
       }
+
+toActiveRequestEntity :: ActiveRequestRow -> MssqlActiveRequestDashboard
+toActiveRequestEntity (dbName, sessionId, status, command, cpuTime, totalElapsed, numReads, numWrites, numLogicalReads) =
+  MssqlActiveRequestDashboard
+    { arSqlServerDbName = SqlServerDbName (LT.toStrict dbName),
+      arSessionId = SessionId sessionId,
+      arStatus = Status (LT.toStrict status),
+      arCommand = Command (LT.toStrict command),
+      arCpuTime = CpuTime cpuTime,
+      arTotalElapsedTime = TotalElapsedTime totalElapsed,
+      arReads = Reads numReads,
+      arWrites = Writes numWrites,
+      arLogicalReads = LogicalReads numLogicalReads
+    }
 
 toEntity :: FileIoRow -> Either String MssqlFileIoDashboard
 toEntity (name, typeDesc, numReads, numWrites, avgRead, avgWrite) = do
@@ -123,7 +166,6 @@ runDashboardRepo pool = interpret $ \_ -> \case
       mapM (either (ioError . userError) return . toEntity) rows
   FetchMssqlSessionDashboardOp cmd ->
     liftIO $ withMSSQLConn pool $ \conn -> do
-      putStrLn "FetchMssqlSessionDashboardOp"
       rows <-
         rpcRows
           =<< ( rpc
@@ -137,3 +179,16 @@ runDashboardRepo pool = interpret $ \_ -> \case
       case rows of
         [] -> ioError (userError "No session data returned for the given database")
         (r : _) -> either (ioError . userError) return (toSessionEntity r)
+  FetchMssqlActiveRequestDashboardOp cmd ->
+    liftIO $ withMSSQLConn pool $ \conn -> do
+      rows <-
+        rpcRows
+          =<< ( rpc
+                  conn
+                  ( RpcQuery
+                      SP_ExecuteSql
+                      (nvarcharVal "" (Just (activeRequestQuery (cmdDbName cmd))))
+                  ) ::
+                  IO (RpcResponse () [ActiveRequestRow])
+              )
+      return (map toActiveRequestEntity rows)
