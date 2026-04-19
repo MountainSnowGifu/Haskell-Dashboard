@@ -10,10 +10,16 @@ module App.Presentation.SQLServerDashboard.Response
     MssqlHealthDashboardResponse (..),
     toMssqlHealthDashboardResponse,
     toMssqlSessionDashboardResponse,
+    toMssqlDbStatusDashboardResponse,
   )
 where
 
-import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard, MssqlHealthDashboard, MssqlSessionDashboard)
+import App.Domain.SQLServerDashboard.Entity
+  ( MssqlDbStatusDashboard,
+    MssqlFileIoDashboard,
+    MssqlHealthDashboard,
+    MssqlSessionDashboard,
+  )
 import qualified App.Domain.SQLServerDashboard.Entity as Entity
 import App.Domain.SQLServerDashboard.ValueObject
   ( Command (..),
@@ -21,11 +27,14 @@ import App.Domain.SQLServerDashboard.ValueObject
     IsServerAlive (..),
     LogicalReads (..),
     Reads (..),
+    RecoveryModelDesc (..),
     SessionId (..),
     SqlServerDbName (..),
+    StateDesc (..),
     Status (..),
     TotalElapsedTime (..),
     TypeDescription (..),
+    UserAccessDesc (..),
     Writes (..),
     unAvgReadMs,
     unAvgWriteMs,
@@ -38,6 +47,31 @@ import App.Domain.SQLServerDashboard.ValueObject
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+
+data MssqlDbStatusDashboardResponse = MssqlDbStatusDashboardResponse
+  { dbsSqlServerDbName :: Text,
+    dbsStateDesc :: Text,
+    dbsRecoveryModelDesc :: Text,
+    dbsUserAccessDesc :: Text
+  }
+  deriving (Show, Generic)
+
+instance ToJSON MssqlDbStatusDashboardResponse
+
+instance FromJSON MssqlDbStatusDashboardResponse
+
+toMssqlDbStatusDashboardResponse :: MssqlDbStatusDashboard -> MssqlDbStatusDashboardResponse
+toMssqlDbStatusDashboardResponse dashboard =
+  let SqlServerDbName dbName = Entity.dbsSqlServerDbName dashboard
+      StateDesc stateDesc = Entity.dbsStateDesc dashboard
+      RecoveryModelDesc recoveryModelDesc = Entity.dbsRecoveryModelDesc dashboard
+      UserAccessDesc userAccessDesc = Entity.dbsUserAccessDesc dashboard
+   in MssqlDbStatusDashboardResponse
+        { dbsSqlServerDbName = dbName,
+          dbsStateDesc = stateDesc,
+          dbsRecoveryModelDesc = recoveryModelDesc,
+          dbsUserAccessDesc = userAccessDesc
+        }
 
 data MssqlSessionDashboardResponse = MssqlSessionDashboardResponse
   { sessionSqlServerDbName :: Text,
@@ -93,9 +127,7 @@ data MssqlHealthDashboardResponse = MssqlHealthDashboardResponse
   { isServerAlive :: Text,
     sqlServerName :: Text,
     sqlServerIp :: Text,
-    mssqlFileIoDashboard :: [MssqlFileIoDashboardResponse],
-    mssqlSessionDashboard :: [MssqlSessionDashboardResponse],
-    mssqlActiveRequestDashboard :: [MssqlActiveRequestDashboardResponse]
+    mssqlDbHealthDashboards :: [MssqlDbHealthDashboardResponse]
   }
   deriving (Show, Generic)
 
@@ -112,18 +144,36 @@ toMssqlHealthDashboardResponse dashboard =
         { isServerAlive = if alive then "Yes" else "No",
           sqlServerName = name,
           sqlServerIp = ip,
-          mssqlFileIoDashboard = map toMssqlFileIoDashboardResponse (Entity.mssqlFileIoDashboard dashboard),
-          mssqlSessionDashboard = map toMssqlSessionDashboardResponse (Entity.mssqlSessionDashboard dashboard),
-          mssqlActiveRequestDashboard = map toMssqlActiveRequestDashboardResponse (Entity.mssqlActiveRequestDashboard dashboard)
+          mssqlDbHealthDashboards = map toMssqlDbHealthDashboardResponse (Entity.mssqlDbHealthDashboards dashboard)
         }
 
 data MssqlDbHealthDashboardResponse = MssqlDbHealthDashboardResponse
   { sqlServerDbName :: Text,
     mssqlFileIoDashboard :: [MssqlFileIoDashboardResponse],
     mssqlSessionDashboard :: MssqlSessionDashboardResponse,
-    mssqlActiveRequestDashboard :: [MssqlActiveRequestDashboardResponse]
+    mssqlActiveRequestDashboard :: [MssqlActiveRequestDashboardResponse],
+    mssqlDbStatusDashboard :: MssqlDbStatusDashboardResponse
   }
   deriving (Show, Generic)
+
+instance ToJSON MssqlDbHealthDashboardResponse
+
+instance FromJSON MssqlDbHealthDashboardResponse
+
+toMssqlDbHealthDashboardResponse :: Entity.MssqlDbHealthDashboard -> MssqlDbHealthDashboardResponse
+toMssqlDbHealthDashboardResponse dashboard =
+  let SqlServerDbName dbName = Entity.dbhSqlServerDbName dashboard
+      fileIo = map toMssqlFileIoDashboardResponse (Entity.dbhMssqlFileIoDashboard dashboard)
+      session = toMssqlSessionDashboardResponse (Entity.dbhMssqlSessionDashboard dashboard)
+      activeRequests = map toMssqlActiveRequestDashboardResponse (Entity.dbhMsqlActiveRequestDashboard dashboard)
+      dbStatus = toMssqlDbStatusDashboardResponse (Entity.dbhMssqlDbStatusDashboard dashboard)
+   in MssqlDbHealthDashboardResponse
+        { sqlServerDbName = dbName,
+          mssqlFileIoDashboard = fileIo,
+          mssqlSessionDashboard = session,
+          mssqlActiveRequestDashboard = activeRequests,
+          mssqlDbStatusDashboard = dbStatus
+        }
 
 data MssqlActiveRequestDashboardResponse = MssqlActiveRequestDashboardResponse
   { arSqlServerDbName :: Text,

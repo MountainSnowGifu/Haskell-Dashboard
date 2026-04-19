@@ -2,9 +2,11 @@
 
 module App.Domain.SQLServerDashboard.Entity
   ( MssqlHealthDashboard (..),
+    MssqlDbHealthDashboard (..),
     MssqlFileIoDashboard (..),
     MssqlSessionDashboard (..),
     MssqlActiveRequestDashboard (..),
+    MssqlDbStatusDashboard (..),
   )
 where
 
@@ -18,14 +20,17 @@ import App.Domain.SQLServerDashboard.ValueObject
     NumOfReads,
     NumOfWrites,
     Reads,
+    RecoveryModelDesc,
     SessionCount,
     SessionId,
     SqlServerDbName,
     SqlServerIp,
     SqlServerName,
+    StateDesc,
     Status,
     TotalElapsedTime,
     TypeDescription,
+    UserAccessDesc,
     Writes,
   )
 import GHC.Generics (Generic)
@@ -34,9 +39,16 @@ data MssqlHealthDashboard = MssqlHealthDashboard
   { isServerAlive :: IsServerAlive,
     sqlServerName :: SqlServerName,
     sqlServerIp :: SqlServerIp,
-    mssqlFileIoDashboard :: [MssqlFileIoDashboard],
-    mssqlSessionDashboard :: [MssqlSessionDashboard],
-    mssqlActiveRequestDashboard :: [MssqlActiveRequestDashboard]
+    mssqlDbHealthDashboards :: [MssqlDbHealthDashboard]
+  }
+  deriving (Show, Eq, Generic)
+
+data MssqlDbHealthDashboard = MssqlDbHealthDashboard
+  { dbhSqlServerDbName :: SqlServerDbName,
+    dbhMssqlFileIoDashboard :: [MssqlFileIoDashboard],
+    dbhMssqlSessionDashboard :: MssqlSessionDashboard,
+    dbhMsqlActiveRequestDashboard :: [MssqlActiveRequestDashboard],
+    dbhMssqlDbStatusDashboard :: MssqlDbStatusDashboard
   }
   deriving (Show, Eq, Generic)
 
@@ -66,5 +78,13 @@ data MssqlActiveRequestDashboard = MssqlActiveRequestDashboard
     arReads :: Reads,
     arWrites :: Writes,
     arLogicalReads :: LogicalReads
+  }
+  deriving (Show, Eq, Generic)
+
+data MssqlDbStatusDashboard = MssqlDbStatusDashboard
+  { dbsSqlServerDbName :: SqlServerDbName,
+    dbsStateDesc :: StateDesc,
+    dbsRecoveryModelDesc :: RecoveryModelDesc,
+    dbsUserAccessDesc :: UserAccessDesc
   }
   deriving (Show, Eq, Generic)

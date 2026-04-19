@@ -34,6 +34,9 @@ module App.Domain.SQLServerDashboard.ValueObject
     Reads (..),
     Writes (..),
     LogicalReads (..),
+    StateDesc (..),
+    RecoveryModelDesc (..),
+    UserAccessDesc (..),
   )
 where
 
@@ -162,4 +165,13 @@ newtype Writes = Writes Int
   deriving (Show, Eq, Ord)
 
 newtype LogicalReads = LogicalReads Int
+  deriving (Show, Eq, Ord)
+
+newtype StateDesc = StateDesc Text
+  deriving (Show, Eq, Ord)
+
+newtype RecoveryModelDesc = RecoveryModelDesc Text
+  deriving (Show, Eq, Ord)
+
+newtype UserAccessDesc = UserAccessDesc Text
   deriving (Show, Eq, Ord)

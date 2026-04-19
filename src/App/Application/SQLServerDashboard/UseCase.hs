@@ -15,8 +15,8 @@ where
 import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCommand (..))
 import App.Application.SQLServerDashboard.Repository (DashboardRepo)
 import App.Application.SQLServerDashboard.Repository qualified as DashboardRepo
-import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard (..))
-import App.Domain.SQLServerDashboard.ValueObject (IsServerAlive (..))
+import App.Domain.SQLServerDashboard.Entity (MssqlDbHealthDashboard (..), MssqlHealthDashboard (..))
+import App.Domain.SQLServerDashboard.ValueObject (IsServerAlive (..), SqlServerDbName (..))
 import Data.Text (Text)
 import Effectful (Eff, IOE, liftIO, (:>))
 
@@ -25,15 +25,26 @@ type DashboardRunner = forall a. Eff '[DashboardRepo, IOE] a -> IO a
 fetchMssqlFileIoDashboard :: (DashboardRepo :> es, IOE :> es) => [Text] -> Eff es MssqlHealthDashboard
 fetchMssqlFileIoDashboard dbNames = do
   liftIO $ putStrLn "[DashboardRepo] fetching dashboard data from SQL Server..."
-  fileIoRows <- mapM (DashboardRepo.getMssqlFileIoDashboard . CreateMssqlFileIoDashboardCommand) dbNames
-  sessionRows <- mapM (DashboardRepo.getMssqlSessionDashboard . CreateMssqlFileIoDashboardCommand) dbNames
-  activeRequestRows <- mapM (DashboardRepo.getMssqlActiveRequestDashboard . CreateMssqlFileIoDashboardCommand) dbNames
+  dbHealthDashboards <- mapM fetchDbDashboard dbNames
   return
     MssqlHealthDashboard
       { isServerAlive = IsServerAlive True, -- 仮の値
         sqlServerName = "testServer", -- 仮の値
         sqlServerIp = "127.0.0.1", -- 仮の値
-        mssqlFileIoDashboard = concat fileIoRows,
-        mssqlSessionDashboard = sessionRows,
-        mssqlActiveRequestDashboard = concat activeRequestRows
+        mssqlDbHealthDashboards = dbHealthDashboards
       }
+  where
+    fetchDbDashboard dbName = do
+      let cmd = CreateMssqlFileIoDashboardCommand dbName
+      fileIoRows <- DashboardRepo.getMssqlFileIoDashboard cmd
+      sessionRow <- DashboardRepo.getMssqlSessionDashboard cmd
+      activeRequestRows <- DashboardRepo.getMssqlActiveRequestDashboard cmd
+      dbStatusRows <- DashboardRepo.getMssqlDbStatusDashboard cmd
+      return
+        MssqlDbHealthDashboard
+          { dbhSqlServerDbName = SqlServerDbName dbName,
+            dbhMssqlFileIoDashboard = fileIoRows,
+            dbhMssqlSessionDashboard = sessionRow,
+            dbhMsqlActiveRequestDashboard = activeRequestRows,
+            dbhMssqlDbStatusDashboard = dbStatusRows
+          }

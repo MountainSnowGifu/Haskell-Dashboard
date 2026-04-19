@@ -109,8 +109,10 @@ executable SqlserverMonitoring
                         , wai-websockets
                         , stm
                         , async
-                        , http-types
-                        , effectful-core
+                      , http-types
+                      , effectful-core
+                      , dotenv
+                      , envparse
 
     -- Directories containing source files.
     hs-source-dirs:   app, src

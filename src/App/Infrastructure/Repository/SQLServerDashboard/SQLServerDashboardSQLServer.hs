@@ -12,17 +12,20 @@ where
 
 import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCommand (..))
 import App.Application.SQLServerDashboard.Repository (DashboardRepo (..))
-import App.Domain.SQLServerDashboard.Entity (MssqlActiveRequestDashboard (..), MssqlFileIoDashboard (..), MssqlSessionDashboard (..))
+import App.Domain.SQLServerDashboard.Entity (MssqlActiveRequestDashboard (..), MssqlDbStatusDashboard (..), MssqlFileIoDashboard (..), MssqlSessionDashboard (..))
 import App.Domain.SQLServerDashboard.ValueObject
   ( Command (..),
     CpuTime (..),
     LogicalReads (..),
     Reads (..),
+    RecoveryModelDesc (..),
     SessionId (..),
     SqlServerDbName (..),
+    StateDesc (..),
     Status (..),
     TotalElapsedTime (..),
     TypeDescription (..),
+    UserAccessDesc (..),
     Writes (..),
     mkAvgReadMs,
     mkAvgWriteMs,
@@ -43,6 +46,9 @@ import Database.MSSQLServer.Query
   )
 import Effectful
 import Effectful.Dispatch.Dynamic (interpret)
+
+-- (name, state_desc, recovery_model_desc, user_access_desc)
+type DbStatusRow = (LT.Text, LT.Text, LT.Text, LT.Text)
 
 -- (db_name, session_count)
 type SessionRow = (LT.Text, Int)
@@ -83,6 +89,18 @@ fileIoQuery dbName =
   \WHERE mf.database_id = DB_ID('"
     <> dbName
     <> "')"
+
+dbStatusQuery :: Text -> Text
+dbStatusQuery dbName =
+  "SELECT \
+  \    name, \
+  \    state_desc, \
+  \    recovery_model_desc, \
+  \    user_access_desc \
+  \FROM sys.databases \
+  \WHERE name = '"
+    <> dbName
+    <> "'"
 
 activeRequestQuery :: Text -> Text
 activeRequestQuery dbName =
@@ -127,6 +145,15 @@ toActiveRequestEntity (dbName, sessionId, status, command, cpuTime, totalElapsed
       arReads = Reads numReads,
       arWrites = Writes numWrites,
       arLogicalReads = LogicalReads numLogicalReads
+    }
+
+toDbStatusEntity :: DbStatusRow -> MssqlDbStatusDashboard
+toDbStatusEntity (name, stateDesc, recoveryModel, userAccess) =
+  MssqlDbStatusDashboard
+    { dbsSqlServerDbName = SqlServerDbName (LT.toStrict name),
+      dbsStateDesc = StateDesc (LT.toStrict stateDesc),
+      dbsRecoveryModelDesc = RecoveryModelDesc (LT.toStrict recoveryModel),
+      dbsUserAccessDesc = UserAccessDesc (LT.toStrict userAccess)
     }
 
 toEntity :: FileIoRow -> Either String MssqlFileIoDashboard
@@ -192,3 +219,18 @@ runDashboardRepo pool = interpret $ \_ -> \case
                   IO (RpcResponse () [ActiveRequestRow])
               )
       return (map toActiveRequestEntity rows)
+  FetchMssqlDbStatusDashboardOp cmd ->
+    liftIO $ withMSSQLConn pool $ \conn -> do
+      rows <-
+        rpcRows
+          =<< ( rpc
+                  conn
+                  ( RpcQuery
+                      SP_ExecuteSql
+                      (nvarcharVal "" (Just (dbStatusQuery (cmdDbName cmd))))
+                  ) ::
+                  IO (RpcResponse () [DbStatusRow])
+              )
+      case rows of
+        [] -> ioError (userError "No status data returned for the given database")
+        (r : _) -> return (toDbStatusEntity r)
