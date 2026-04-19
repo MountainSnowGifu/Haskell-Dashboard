@@ -9,6 +9,8 @@ where
 import App.Application.SQLServerDashboard.Subscription (DashboardSubscription (..))
 import App.Application.SQLServerDashboard.UseCase (DashboardRunner)
 import App.Core.Config (Config (..))
+import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard (..))
+import App.Domain.SQLServerDashboard.ValueObject (IsServerAlive (..))
 import App.Infrastructure.Broadcast.Channel (newBroadcastChannel, subscribe)
 import App.Infrastructure.Database.Types (MSSQLPool)
 import App.Infrastructure.Notifier.SQLServerDashboard (runDashboardNotifier)
@@ -64,7 +66,7 @@ app runner sub connCountRef =
 runServant :: Config -> MSSQLPool -> IO ()
 runServant servantConfig sqlserverPool = do
   shutdown <- newEmptyMVar
-  latestRef <- newTVarIO Nothing
+  latestRef <- newTVarIO (MssqlHealthDashboard {isServerAlive = IsServerAlive False, sqlServerName = "unknown", sqlServerIp = "0.0.0.0", mssqlFileIoDashboard = []})
   broadcastChan <- newBroadcastChannel
   connCountRef <- newTVarIO (0 :: Int)
 

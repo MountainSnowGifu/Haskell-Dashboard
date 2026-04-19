@@ -10,6 +10,6 @@ import App.Presentation.SQLServerDashboard.Response
 import Servant
 
 type SQLServerDashboardAPI =
-  "sqlserver-dashboard" :> Get '[JSON] SQLServerDashboardResponse
+  "sqlserver-dashboard" :> Get '[JSON] [SQLServerHealthDashboardResponse]
     :<|> "sqlserver-dashboard" :> "ws" :> Raw
     :<|> "sqlserver-dashboard" :> "connections" :> Get '[JSON] ConnectionCountResponse

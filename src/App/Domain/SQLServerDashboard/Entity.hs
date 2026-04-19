@@ -20,7 +20,8 @@ import GHC.Generics (Generic)
 data MssqlHealthDashboard = MssqlHealthDashboard
   { isServerAlive :: IsServerAlive,
     sqlServerName :: SqlServerName,
-    sqlServerIp :: SqlServerIp
+    sqlServerIp :: SqlServerIp,
+    mssqlFileIoDashboard :: [MssqlFileIoDashboard]
   }
   deriving (Show, Eq, Generic)
 

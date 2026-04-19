@@ -10,6 +10,7 @@ module App.Infrastructure.Repository.SQLServerDashboard.SQLServerDashboardSQLSer
   )
 where
 
+import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCommand (..))
 import App.Application.SQLServerDashboard.Repository (DashboardRepo (..))
 import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard (..))
 import App.Domain.SQLServerDashboard.ValueObject
@@ -35,8 +36,8 @@ import Effectful.Dispatch.Dynamic (interpret)
 -- (name, type_desc, num_of_reads, num_of_writes, avg_read_ms, avg_write_ms)
 type FileIoRow = (LT.Text, LT.Text, Int, Int, Int, Int)
 
-fileIoQuery :: Text
-fileIoQuery =
+fileIoQuery :: Text -> Text
+fileIoQuery dbName =
   "SELECT \
   \    mf.name, \
   \    mf.type_desc, \
@@ -50,7 +51,9 @@ fileIoQuery =
   \JOIN sys.master_files mf \
   \    ON vfs.database_id = mf.database_id \
   \   AND vfs.file_id = mf.file_id \
-  \WHERE mf.database_id = DB_ID('testdb')"
+  \WHERE mf.database_id = DB_ID('"
+    <> dbName
+    <> "')"
 
 rpcRows :: RpcResponse a b -> IO b
 rpcRows (RpcResponse _ _ rs) = return rs
@@ -74,19 +77,16 @@ runDashboardRepo ::
   Eff (DashboardRepo : es) a ->
   Eff es a
 runDashboardRepo pool = interpret $ \_ -> \case
-  FetchMssqlFileIoDashboardOp ->
+  FetchMssqlFileIoDashboardOp cmd ->
     liftIO $ withMSSQLConn pool $ \conn -> do
-      putStrLn "[DashboardRepo] fetching dashboard data from SQL Server..."
       rows <-
         rpcRows
           =<< ( rpc
                   conn
                   ( RpcQuery
                       SP_ExecuteSql
-                      (nvarcharVal "" (Just fileIoQuery))
+                      (nvarcharVal "" (Just (fileIoQuery (cmdDbName cmd))))
                   ) ::
                   IO (RpcResponse () [FileIoRow])
               )
-      case rows of
-        [] -> return Nothing
-        row : _ -> either (ioError . userError) (return . Just) (toEntity row)
+      mapM (either (ioError . userError) return . toEntity) rows

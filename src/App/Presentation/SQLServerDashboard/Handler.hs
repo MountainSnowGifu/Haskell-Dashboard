@@ -8,17 +8,19 @@ module App.Presentation.SQLServerDashboard.Handler
 where
 
 import App.Application.SQLServerDashboard.UseCase (DashboardRunner, fetchMssqlFileIoDashboard)
-import App.Presentation.SQLServerDashboard.Response (ConnectionCountResponse (..), SQLServerDashboardResponse, toDashboardResponse)
+import App.Presentation.SQLServerDashboard.Response
+  ( ConnectionCountResponse (..),
+    SQLServerHealthDashboardResponse (..),
+    toSQLServerHealthDashboardResponse,
+  )
 import Control.Concurrent.STM (TVar, readTVarIO)
 import Control.Monad.IO.Class (liftIO)
 import Servant
 
-sqlServerDashboardHandler :: DashboardRunner -> Handler SQLServerDashboardResponse
+sqlServerDashboardHandler :: DashboardRunner -> Handler [SQLServerHealthDashboardResponse]
 sqlServerDashboardHandler runner = do
-  mBoard <- liftIO $ runner fetchMssqlFileIoDashboard
-  case mBoard of
-    Nothing -> throwError err404
-    Just board -> return (toDashboardResponse board)
+  dashboards <- liftIO $ runner fetchMssqlFileIoDashboard
+  return [toSQLServerHealthDashboardResponse dashboards]
 
 sqlServerConnectionsHandler :: TVar Int -> Handler ConnectionCountResponse
 sqlServerConnectionsHandler connCountRef = do

@@ -10,14 +10,15 @@ module App.Application.SQLServerDashboard.Repository
   )
 where
 
+import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCommand (..))
 import App.Domain.SQLServerDashboard.Entity
 import Effectful
 import Effectful.Dispatch.Dynamic (send)
 
 data DashboardRepo :: Effect where
-  FetchMssqlFileIoDashboardOp :: DashboardRepo m (Maybe MssqlFileIoDashboard)
+  FetchMssqlFileIoDashboardOp :: CreateMssqlFileIoDashboardCommand -> DashboardRepo m [MssqlFileIoDashboard]
 
 type instance DispatchOf DashboardRepo = Dynamic
 
-getMssqlFileIoDashboard :: (DashboardRepo :> es) => Eff es (Maybe MssqlFileIoDashboard)
-getMssqlFileIoDashboard = send FetchMssqlFileIoDashboardOp
+getMssqlFileIoDashboard :: (DashboardRepo :> es) => CreateMssqlFileIoDashboardCommand -> Eff es [MssqlFileIoDashboard]
+getMssqlFileIoDashboard cmd = send (FetchMssqlFileIoDashboardOp cmd)

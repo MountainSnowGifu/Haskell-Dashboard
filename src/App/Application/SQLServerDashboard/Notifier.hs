@@ -10,14 +10,14 @@ module App.Application.SQLServerDashboard.Notifier
   )
 where
 
-import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard)
+import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard)
 import Effectful
 import Effectful.Dispatch.Dynamic (send)
 
 data DashboardNotifier :: Effect where
-  NotifyDashboard :: MssqlFileIoDashboard -> DashboardNotifier m ()
+  NotifyDashboard :: MssqlHealthDashboard -> DashboardNotifier m ()
 
 type instance DispatchOf DashboardNotifier = Dynamic
 
-notifyDashboard :: (DashboardNotifier :> es) => MssqlFileIoDashboard -> Eff es ()
+notifyDashboard :: (DashboardNotifier :> es) => MssqlHealthDashboard -> Eff es ()
 notifyDashboard = send . NotifyDashboard

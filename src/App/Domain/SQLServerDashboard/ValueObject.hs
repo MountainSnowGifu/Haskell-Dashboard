@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module App.Domain.SQLServerDashboard.ValueObject
@@ -19,6 +20,7 @@ module App.Domain.SQLServerDashboard.ValueObject
   )
 where
 
+import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as T
 
@@ -26,7 +28,7 @@ newtype IsServerAlive = IsServerAlive Bool
   deriving (Show, Eq, Ord)
 
 newtype SqlServerName = SqlServerName Text
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, IsString)
 
 unSqlServerName :: SqlServerName -> Text
 unSqlServerName (SqlServerName t) = t
@@ -37,7 +39,7 @@ mkSqlServerName t
   | otherwise = Right (SqlServerName t)
 
 newtype SqlServerIp = SqlServerIp Text
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, IsString)
 
 unSqlServerIp :: SqlServerIp -> Text
 unSqlServerIp (SqlServerIp t) = t

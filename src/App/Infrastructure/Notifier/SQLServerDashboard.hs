@@ -10,7 +10,7 @@ module App.Infrastructure.Notifier.SQLServerDashboard
 where
 
 import App.Application.SQLServerDashboard.Notifier (DashboardNotifier (..))
-import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard)
+import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard)
 import App.Infrastructure.Broadcast.Channel (BroadcastChannel, publish)
 import Control.Concurrent.STM (TVar, atomically, writeTVar)
 import Effectful
@@ -18,11 +18,11 @@ import Effectful.Dispatch.Dynamic (interpret)
 
 runDashboardNotifier ::
   (IOE :> es) =>
-  TVar (Maybe MssqlFileIoDashboard) ->
-  BroadcastChannel MssqlFileIoDashboard ->
+  TVar MssqlHealthDashboard ->
+  BroadcastChannel MssqlHealthDashboard ->
   Eff (DashboardNotifier : es) a ->
   Eff es a
 runDashboardNotifier latestRef chan = interpret $ \_env -> \case
-  NotifyDashboard dashboard -> liftIO $ do
-    atomically $ writeTVar latestRef (Just dashboard)
-    publish chan dashboard
+  NotifyDashboard dashboards -> liftIO $ do
+    atomically $ writeTVar latestRef dashboards
+    publish chan dashboards
