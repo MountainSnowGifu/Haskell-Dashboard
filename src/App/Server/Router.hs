@@ -7,7 +7,6 @@ module App.Server.Router
 where
 
 import App.Application.SQLServerDashboard.Subscription (DashboardSubscription (..))
-import Data.Text (Text)
 import App.Application.SQLServerDashboard.UseCase (DashboardRunner)
 import App.Core.Config (Config (..))
 import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard (..))
@@ -23,9 +22,10 @@ import App.Presentation.SQLServerDashboard.WSHandler (sqlServerDashboardWSHandle
 import App.Server.API (API, combinedAPI)
 import Control.Concurrent (newEmptyMVar, putMVar, takeMVar)
 import Control.Concurrent.Async (async, cancel)
-import Control.Concurrent.STM (TVar, newTVarIO, readTVarIO)
+import Control.Concurrent.STM (TVar, atomically, newTVarIO, readTChan, readTVarIO)
 import Control.Monad (void)
 import Data.Function ((&))
+import Data.Text (Text)
 import Effectful (runEff)
 import Network.HTTP.Types (status400)
 import Network.Wai (responseLBS)
@@ -67,7 +67,16 @@ app dbNames runner sub connCountRef =
 runServant :: Config -> MSSQLPool -> IO ()
 runServant servantConfig sqlserverPool = do
   shutdown <- newEmptyMVar
-  latestRef <- newTVarIO (MssqlHealthDashboard {isServerAlive = IsServerAlive False, sqlServerName = "unknown", sqlServerIp = "0.0.0.0", mssqlFileIoDashboard = []})
+  latestRef <-
+    newTVarIO
+      ( MssqlHealthDashboard
+          { isServerAlive = IsServerAlive False,
+            sqlServerName = "unknown",
+            sqlServerIp = "0.0.0.0",
+            mssqlFileIoDashboard = [],
+            mssqlSessionDashboard = []
+          }
+      )
   broadcastChan <- newBroadcastChannel
   connCountRef <- newTVarIO (0 :: Int)
 
@@ -81,7 +90,9 @@ runServant servantConfig sqlserverPool = do
       sub =
         DashboardSubscription
           { getLatestDashboard = readTVarIO latestRef,
-            subscribeDashboardUpdates = subscribe broadcastChan
+            subscribeUpdates = do
+              chan <- atomically (subscribe broadcastChan)
+              return (atomically (readTChan chan))
           }
 
   let dbNames = monitoredDatabases servantConfig

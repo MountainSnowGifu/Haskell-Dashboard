@@ -12,7 +12,7 @@ where
 
 import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCommand (..))
 import App.Application.SQLServerDashboard.Repository (DashboardRepo (..))
-import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard (..))
+import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard (..), MssqlSessionDashboard (..))
 import App.Domain.SQLServerDashboard.ValueObject
   ( SqlServerDbName (..),
     TypeDescription (..),
@@ -20,6 +20,7 @@ import App.Domain.SQLServerDashboard.ValueObject
     mkAvgWriteMs,
     mkNumOfReads,
     mkNumOfWrites,
+    mkSessionCount,
   )
 import App.Infrastructure.Database.SqlServer (withMSSQLConn)
 import App.Infrastructure.Database.Types (MSSQLPool)
@@ -35,8 +36,23 @@ import Database.MSSQLServer.Query
 import Effectful
 import Effectful.Dispatch.Dynamic (interpret)
 
+-- (db_name, session_count)
+type SessionRow = (LT.Text, Int)
+
 -- (name, type_desc, num_of_reads, num_of_writes, avg_read_ms, avg_write_ms)
 type FileIoRow = (LT.Text, LT.Text, Int, Int, Int, Int)
+
+sessionQuery :: Text -> Text
+sessionQuery dbName =
+  "SELECT \
+  \    DB_NAME(DB_ID('"
+    <> dbName
+    <> "')) AS db_name, \
+       \    COUNT(*) AS session_count \
+       \FROM sys.dm_exec_sessions \
+       \WHERE database_id = DB_ID('"
+    <> dbName
+    <> "')"
 
 fileIoQuery :: Text -> Text
 fileIoQuery dbName =
@@ -60,6 +76,15 @@ fileIoQuery dbName =
 rpcRows :: RpcResponse a b -> IO b
 rpcRows (RpcResponse _ _ rs) = return rs
 rpcRows (RpcResponseError info) = ioError (userError $ "SQL Server error: " ++ show info)
+
+toSessionEntity :: SessionRow -> Either String MssqlSessionDashboard
+toSessionEntity (dbName, count) = do
+  sessionCount' <- mkSessionCount count
+  return
+    MssqlSessionDashboard
+      { sessionCount = sessionCount',
+        sessionSqlServerDbName = SqlServerDbName (LT.toStrict dbName)
+      }
 
 toEntity :: FileIoRow -> Either String MssqlFileIoDashboard
 toEntity (name, typeDesc, numReads, numWrites, avgRead, avgWrite) = do
@@ -96,3 +121,19 @@ runDashboardRepo pool = interpret $ \_ -> \case
                   IO (RpcResponse () [FileIoRow])
               )
       mapM (either (ioError . userError) return . toEntity) rows
+  FetchMssqlSessionDashboardOp cmd ->
+    liftIO $ withMSSQLConn pool $ \conn -> do
+      putStrLn "FetchMssqlSessionDashboardOp"
+      rows <-
+        rpcRows
+          =<< ( rpc
+                  conn
+                  ( RpcQuery
+                      SP_ExecuteSql
+                      (nvarcharVal "" (Just (sessionQuery (cmdDbName cmd))))
+                  ) ::
+                  IO (RpcResponse () [SessionRow])
+              )
+      case rows of
+        [] -> ioError (userError "No session data returned for the given database")
+        (r : _) -> either (ioError . userError) return (toSessionEntity r)

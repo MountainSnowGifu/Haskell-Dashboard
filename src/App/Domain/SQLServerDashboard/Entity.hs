@@ -3,6 +3,7 @@
 module App.Domain.SQLServerDashboard.Entity
   ( MssqlHealthDashboard (..),
     MssqlFileIoDashboard (..),
+    MssqlSessionDashboard (..),
   )
 where
 
@@ -12,6 +13,7 @@ import App.Domain.SQLServerDashboard.ValueObject
     IsServerAlive,
     NumOfReads,
     NumOfWrites,
+    SessionCount,
     SqlServerDbName,
     SqlServerIp,
     SqlServerName,
@@ -23,7 +25,8 @@ data MssqlHealthDashboard = MssqlHealthDashboard
   { isServerAlive :: IsServerAlive,
     sqlServerName :: SqlServerName,
     sqlServerIp :: SqlServerIp,
-    mssqlFileIoDashboard :: [MssqlFileIoDashboard]
+    mssqlFileIoDashboard :: [MssqlFileIoDashboard],
+    mssqlSessionDashboard :: [MssqlSessionDashboard]
   }
   deriving (Show, Eq, Generic)
 
@@ -34,5 +37,11 @@ data MssqlFileIoDashboard = MssqlFileIoDashboard
     numOfWrites :: NumOfWrites,
     avgReadMs :: AvgReadMs,
     avgWriteMs :: AvgWriteMs
+  }
+  deriving (Show, Eq, Generic)
+
+data MssqlSessionDashboard = MssqlSessionDashboard
+  { sessionCount :: SessionCount,
+    sessionSqlServerDbName :: SqlServerDbName
   }
   deriving (Show, Eq, Generic)

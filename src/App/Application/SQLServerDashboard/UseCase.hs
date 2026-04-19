@@ -25,11 +25,14 @@ type DashboardRunner = forall a. Eff '[DashboardRepo, IOE] a -> IO a
 fetchMssqlFileIoDashboard :: (DashboardRepo :> es, IOE :> es) => [Text] -> Eff es MssqlHealthDashboard
 fetchMssqlFileIoDashboard dbNames = do
   liftIO $ putStrLn "[DashboardRepo] fetching dashboard data from SQL Server..."
-  results <- mapM (DashboardRepo.getMssqlFileIoDashboard . CreateMssqlFileIoDashboardCommand) dbNames
+  fileIoRows <- mapM (DashboardRepo.getMssqlFileIoDashboard . CreateMssqlFileIoDashboardCommand) dbNames
+  sessionRows <- mapM (DashboardRepo.getMssqlSessionDashboard . CreateMssqlFileIoDashboardCommand) dbNames
+  liftIO $ print sessionRows
   return
     MssqlHealthDashboard
       { isServerAlive = IsServerAlive True, -- 仮の値
         sqlServerName = "testServer", -- 仮の値
         sqlServerIp = "127.0.0.1", -- 仮の値
-        mssqlFileIoDashboard = concat results
+        mssqlFileIoDashboard = concat fileIoRows,
+        mssqlSessionDashboard = sessionRows
       }

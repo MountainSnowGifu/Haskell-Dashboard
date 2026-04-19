@@ -9,7 +9,7 @@ import App.Application.SQLServerDashboard.Subscription
   ( DashboardSubscription (..),
   )
 import App.Presentation.SQLServerDashboard.Response (toSQLServerHealthDashboardResponse)
-import Control.Concurrent.STM
+import Control.Concurrent.STM (TVar, atomically, modifyTVar', readTVar)
 import Control.Exception (SomeException, finally, try)
 import Control.Monad (forever)
 import Data.Aeson (encode)
@@ -29,9 +29,9 @@ sqlServerDashboardWSHandler sub connCountRef pendingConn = do
     ( withPingThread conn 30 (return ()) $ do
         mLatest <- getLatestDashboard sub
         sendTextData conn (encode (toSQLServerHealthDashboardResponse mLatest))
-        readChan <- atomically (subscribeDashboardUpdates sub)
+        readNext <- subscribeUpdates sub
         let loop = forever $ do
-              val <- atomically (readTChan readChan)
+              val <- readNext
               sendTextData conn (encode (toSQLServerHealthDashboardResponse val))
         _ <- (try loop :: IO (Either SomeException ()))
         return ()

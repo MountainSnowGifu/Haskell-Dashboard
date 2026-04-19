@@ -23,6 +23,9 @@ module App.Domain.SQLServerDashboard.ValueObject
     AvgWriteMs,
     unAvgWriteMs,
     mkAvgWriteMs,
+    SessionCount (..),
+    unSessionCount,
+    mkSessionCount,
   )
 where
 
@@ -117,3 +120,14 @@ mkAvgWriteMs :: Int -> Either String AvgWriteMs
 mkAvgWriteMs n
   | n < 0 = Left $ "AvgWriteMs must be non-negative: " <> show n
   | otherwise = Right (AvgWriteMs n)
+
+newtype SessionCount = SessionCount Int
+  deriving (Show, Eq, Ord)
+
+unSessionCount :: SessionCount -> Int
+unSessionCount (SessionCount n) = n
+
+mkSessionCount :: Int -> Either String SessionCount
+mkSessionCount n
+  | n < 0 = Left $ "SessionCount must be non-negative: " <> show n
+  | otherwise = Right (SessionCount n)
