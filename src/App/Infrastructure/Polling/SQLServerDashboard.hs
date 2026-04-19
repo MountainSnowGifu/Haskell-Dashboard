@@ -13,15 +13,16 @@ import App.Application.SQLServerDashboard.UseCase (fetchMssqlFileIoDashboard)
 import Control.Concurrent (threadDelay)
 import Control.Exception (SomeException, try)
 import Control.Monad (forever)
+import Data.Text (Text)
 import Effectful (Eff, IOE)
 import System.IO (hPutStrLn, stderr)
 
 type PollingRunner = forall a. Eff '[DashboardRepo, DashboardNotifier, IOE] a -> IO a
 
-pollDashboard :: PollingRunner -> IO ()
-pollDashboard runner = forever $ do
+pollDashboard :: [Text] -> PollingRunner -> IO ()
+pollDashboard dbNames runner = forever $ do
   result <- try $ runner $ do
-    dashboard <- fetchMssqlFileIoDashboard
+    dashboard <- fetchMssqlFileIoDashboard dbNames
     notifyDashboard dashboard
   case result of
     Left err -> hPutStrLn stderr $ "[Polling] error: " <> show (err :: SomeException)

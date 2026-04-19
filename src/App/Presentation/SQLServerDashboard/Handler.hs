@@ -15,11 +15,12 @@ import App.Presentation.SQLServerDashboard.Response
   )
 import Control.Concurrent.STM (TVar, readTVarIO)
 import Control.Monad.IO.Class (liftIO)
+import Data.Text (Text)
 import Servant
 
-sqlServerDashboardHandler :: DashboardRunner -> Handler [SQLServerHealthDashboardResponse]
-sqlServerDashboardHandler runner = do
-  dashboards <- liftIO $ runner fetchMssqlFileIoDashboard
+sqlServerDashboardHandler :: [Text] -> DashboardRunner -> Handler [SQLServerHealthDashboardResponse]
+sqlServerDashboardHandler dbNames runner = do
+  dashboards <- liftIO $ runner (fetchMssqlFileIoDashboard dbNames)
   return [toSQLServerHealthDashboardResponse dashboards]
 
 sqlServerConnectionsHandler :: TVar Int -> Handler ConnectionCountResponse

@@ -7,7 +7,9 @@ module App.Domain.SQLServerDashboard.Entity
 where
 
 import App.Domain.SQLServerDashboard.ValueObject
-  ( IsServerAlive,
+  ( AvgReadMs,
+    AvgWriteMs,
+    IsServerAlive,
     NumOfReads,
     NumOfWrites,
     SqlServerDbName,
@@ -29,6 +31,8 @@ data MssqlFileIoDashboard = MssqlFileIoDashboard
   { sqlServerDbName :: SqlServerDbName,
     typeDescription :: TypeDescription,
     numOfReads :: NumOfReads,
-    numOfWrites :: NumOfWrites
+    numOfWrites :: NumOfWrites,
+    avgReadMs :: AvgReadMs,
+    avgWriteMs :: AvgWriteMs
   }
   deriving (Show, Eq, Generic)

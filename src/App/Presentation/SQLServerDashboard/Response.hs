@@ -1,9 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
 
 module App.Presentation.SQLServerDashboard.Response
   ( SQLServerFileIoDashboardResponse (..),
@@ -20,6 +18,8 @@ import App.Domain.SQLServerDashboard.ValueObject
   ( IsServerAlive (..),
     SqlServerDbName (..),
     TypeDescription (..),
+    unAvgReadMs,
+    unAvgWriteMs,
     unNumOfReads,
     unNumOfWrites,
     unSqlServerIp,
@@ -33,7 +33,9 @@ data SQLServerFileIoDashboardResponse = SQLServerFileIoDashboardResponse
   { sqlServerDbName :: Text,
     typeDescription :: Text,
     numOfReads :: Int,
-    numOfWrites :: Int
+    numOfWrites :: Int,
+    avgReadMs :: Int,
+    avgWriteMs :: Int
   }
   deriving (Show, Generic)
 
@@ -47,11 +49,15 @@ toSQLServerFileIoDashboardResponse dashboard =
       TypeDescription typeDesc = Entity.typeDescription dashboard
       numReads = unNumOfReads (Entity.numOfReads dashboard)
       numWrites = unNumOfWrites (Entity.numOfWrites dashboard)
+      avgRead = unAvgReadMs (Entity.avgReadMs dashboard)
+      avgWrite = unAvgWriteMs (Entity.avgWriteMs dashboard)
    in SQLServerFileIoDashboardResponse
         { sqlServerDbName = dbName,
           typeDescription = typeDesc,
           numOfReads = numReads,
-          numOfWrites = numWrites
+          numOfWrites = numWrites,
+          avgReadMs = avgRead,
+          avgWriteMs = avgWrite
         }
 
 data SQLServerHealthDashboardResponse = SQLServerHealthDashboardResponse

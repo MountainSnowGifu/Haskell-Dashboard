@@ -16,6 +16,8 @@ import App.Domain.SQLServerDashboard.Entity (MssqlFileIoDashboard (..))
 import App.Domain.SQLServerDashboard.ValueObject
   ( SqlServerDbName (..),
     TypeDescription (..),
+    mkAvgReadMs,
+    mkAvgWriteMs,
     mkNumOfReads,
     mkNumOfWrites,
   )
@@ -60,15 +62,19 @@ rpcRows (RpcResponse _ _ rs) = return rs
 rpcRows (RpcResponseError info) = ioError (userError $ "SQL Server error: " ++ show info)
 
 toEntity :: FileIoRow -> Either String MssqlFileIoDashboard
-toEntity (name, typeDesc, numReads, numWrites, _, _) = do
+toEntity (name, typeDesc, numReads, numWrites, avgRead, avgWrite) = do
   numOfReads' <- mkNumOfReads numReads
   numOfWrites' <- mkNumOfWrites numWrites
+  avgReadMs' <- mkAvgReadMs avgRead
+  avgWriteMs' <- mkAvgWriteMs avgWrite
   return
     MssqlFileIoDashboard
       { sqlServerDbName = SqlServerDbName (LT.toStrict name),
         typeDescription = TypeDescription (LT.toStrict typeDesc),
         numOfReads = numOfReads',
-        numOfWrites = numOfWrites'
+        numOfWrites = numOfWrites',
+        avgReadMs = avgReadMs',
+        avgWriteMs = avgWriteMs'
       }
 
 runDashboardRepo ::

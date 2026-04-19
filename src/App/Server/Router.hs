@@ -7,6 +7,7 @@ module App.Server.Router
 where
 
 import App.Application.SQLServerDashboard.Subscription (DashboardSubscription (..))
+import Data.Text (Text)
 import App.Application.SQLServerDashboard.UseCase (DashboardRunner)
 import App.Core.Config (Config (..))
 import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard (..))
@@ -41,10 +42,10 @@ import Network.WebSockets (defaultConnectionOptions)
 import Servant
 import System.Posix.Signals (Handler (..), installHandler, sigINT, sigTERM)
 
-server :: DashboardRunner -> DashboardSubscription -> TVar Int -> Server API
-server runner sub connCountRef =
+server :: [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Server API
+server dbNames runner sub connCountRef =
   healthHandler
-    :<|> sqlServerDashboardHandler runner
+    :<|> sqlServerDashboardHandler dbNames runner
     :<|> Tagged (websocketsOr defaultConnectionOptions (sqlServerDashboardWSHandler sub connCountRef) fallback)
     :<|> sqlServerConnectionsHandler connCountRef
   where
@@ -58,10 +59,10 @@ corsPolicy =
       corsRequestHeaders = ["Content-Type", "Authorization"]
     }
 
-app :: DashboardRunner -> DashboardSubscription -> TVar Int -> Application
-app runner sub connCountRef =
+app :: [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Application
+app dbNames runner sub connCountRef =
   cors (const $ Just corsPolicy) $
-    serve combinedAPI (server runner sub connCountRef)
+    serve combinedAPI (server dbNames runner sub connCountRef)
 
 runServant :: Config -> MSSQLPool -> IO ()
 runServant servantConfig sqlserverPool = do
@@ -83,7 +84,8 @@ runServant servantConfig sqlserverPool = do
             subscribeDashboardUpdates = subscribe broadcastChan
           }
 
-  pollingThread <- async (pollDashboard pollingRunner)
+  let dbNames = monitoredDatabases servantConfig
+  pollingThread <- async (pollDashboard dbNames pollingRunner)
 
   let settings =
         defaultSettings
@@ -100,6 +102,6 @@ runServant servantConfig sqlserverPool = do
                 void $ installHandler sigINT handler Nothing
             )
 
-  runSettings settings (app runner sub connCountRef)
+  runSettings settings (app dbNames runner sub connCountRef)
   takeMVar shutdown
   putStrLn "サーバーを終了しました"

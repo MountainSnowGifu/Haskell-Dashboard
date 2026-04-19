@@ -3,8 +3,11 @@ module App.Core.Config
   )
 where
 
+import Data.Text (Text)
+
 data Config = Config
   { port :: Int,
-    host :: String
+    host :: String,
+    monitoredDatabases :: [Text]
   }
   deriving (Show)

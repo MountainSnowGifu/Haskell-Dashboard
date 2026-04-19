@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import App.Core.Config (Config (..))
@@ -10,7 +12,8 @@ main = do
   let servantConfig =
         Config
           { port = 8081,
-            host = "localhost"
+            host = "localhost",
+            monitoredDatabases = ["testdb", "testdb2", "testdb3"]
           }
   print servantConfig
 
