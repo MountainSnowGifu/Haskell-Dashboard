@@ -4,12 +4,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module App.Presentation.SQLServerDashboard.Response
-  ( SQLServerFileIoDashboardResponse (..),
-    toSQLServerFileIoDashboardResponse,
+  ( MssqlFileIoDashboardResponse (..),
+    toMssqlFileIoDashboardResponse,
     ConnectionCountResponse (..),
-    SQLServerHealthDashboardResponse (..),
-    toSQLServerHealthDashboardResponse,
-    toSQLServerSessionDashboardResponse,
+    MssqlHealthDashboardResponse (..),
+    toMssqlHealthDashboardResponse,
+    toMssqlSessionDashboardResponse,
   )
 where
 
@@ -31,26 +31,26 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
-data SQLServerSessionDashboardResponse = SQLServerSessionDashboardResponse
+data MssqlSessionDashboardResponse = MssqlSessionDashboardResponse
   { sessionSqlServerDbName :: Text,
     sessionCount :: Int
   }
   deriving (Show, Generic)
 
-instance ToJSON SQLServerSessionDashboardResponse
+instance ToJSON MssqlSessionDashboardResponse
 
-instance FromJSON SQLServerSessionDashboardResponse
+instance FromJSON MssqlSessionDashboardResponse
 
-toSQLServerSessionDashboardResponse :: MssqlSessionDashboard -> SQLServerSessionDashboardResponse
-toSQLServerSessionDashboardResponse dashboard =
+toMssqlSessionDashboardResponse :: MssqlSessionDashboard -> MssqlSessionDashboardResponse
+toMssqlSessionDashboardResponse dashboard =
   let SqlServerDbName dbName = Entity.sessionSqlServerDbName dashboard
       count = unSessionCount (Entity.sessionCount dashboard)
-   in SQLServerSessionDashboardResponse
+   in MssqlSessionDashboardResponse
         { sessionSqlServerDbName = dbName,
           sessionCount = count
         }
 
-data SQLServerFileIoDashboardResponse = SQLServerFileIoDashboardResponse
+data MssqlFileIoDashboardResponse = MssqlFileIoDashboardResponse
   { sqlServerDbName :: Text,
     typeDescription :: Text,
     numOfReads :: Int,
@@ -60,19 +60,19 @@ data SQLServerFileIoDashboardResponse = SQLServerFileIoDashboardResponse
   }
   deriving (Show, Generic)
 
-instance ToJSON SQLServerFileIoDashboardResponse
+instance ToJSON MssqlFileIoDashboardResponse
 
-instance FromJSON SQLServerFileIoDashboardResponse
+instance FromJSON MssqlFileIoDashboardResponse
 
-toSQLServerFileIoDashboardResponse :: MssqlFileIoDashboard -> SQLServerFileIoDashboardResponse
-toSQLServerFileIoDashboardResponse dashboard =
+toMssqlFileIoDashboardResponse :: MssqlFileIoDashboard -> MssqlFileIoDashboardResponse
+toMssqlFileIoDashboardResponse dashboard =
   let SqlServerDbName dbName = Entity.sqlServerDbName dashboard
       TypeDescription typeDesc = Entity.typeDescription dashboard
       numReads = unNumOfReads (Entity.numOfReads dashboard)
       numWrites = unNumOfWrites (Entity.numOfWrites dashboard)
       avgRead = unAvgReadMs (Entity.avgReadMs dashboard)
       avgWrite = unAvgWriteMs (Entity.avgWriteMs dashboard)
-   in SQLServerFileIoDashboardResponse
+   in MssqlFileIoDashboardResponse
         { sqlServerDbName = dbName,
           typeDescription = typeDesc,
           numOfReads = numReads,
@@ -81,30 +81,30 @@ toSQLServerFileIoDashboardResponse dashboard =
           avgWriteMs = avgWrite
         }
 
-data SQLServerHealthDashboardResponse = SQLServerHealthDashboardResponse
+data MssqlHealthDashboardResponse = MssqlHealthDashboardResponse
   { isServerAlive :: Text,
     sqlServerName :: Text,
     sqlServerIp :: Text,
-    mssqlFileIoDashboard :: [SQLServerFileIoDashboardResponse],
-    mssqlSessionDashboard :: [SQLServerSessionDashboardResponse]
+    mssqlFileIoDashboard :: [MssqlFileIoDashboardResponse],
+    mssqlSessionDashboard :: [MssqlSessionDashboardResponse]
   }
   deriving (Show, Generic)
 
-instance ToJSON SQLServerHealthDashboardResponse
+instance ToJSON MssqlHealthDashboardResponse
 
-instance FromJSON SQLServerHealthDashboardResponse
+instance FromJSON MssqlHealthDashboardResponse
 
-toSQLServerHealthDashboardResponse :: MssqlHealthDashboard -> SQLServerHealthDashboardResponse
-toSQLServerHealthDashboardResponse dashboard =
+toMssqlHealthDashboardResponse :: MssqlHealthDashboard -> MssqlHealthDashboardResponse
+toMssqlHealthDashboardResponse dashboard =
   let IsServerAlive alive = Entity.isServerAlive dashboard
       name = unSqlServerName (Entity.sqlServerName dashboard)
       ip = unSqlServerIp (Entity.sqlServerIp dashboard)
-   in SQLServerHealthDashboardResponse
+   in MssqlHealthDashboardResponse
         { isServerAlive = if alive then "Yes" else "No",
           sqlServerName = name,
           sqlServerIp = ip,
-          mssqlFileIoDashboard = map toSQLServerFileIoDashboardResponse (Entity.mssqlFileIoDashboard dashboard),
-          mssqlSessionDashboard = map toSQLServerSessionDashboardResponse (Entity.mssqlSessionDashboard dashboard)
+          mssqlFileIoDashboard = map toMssqlFileIoDashboardResponse (Entity.mssqlFileIoDashboard dashboard),
+          mssqlSessionDashboard = map toMssqlSessionDashboardResponse (Entity.mssqlSessionDashboard dashboard)
         }
 
 newtype ConnectionCountResponse = ConnectionCountResponse
