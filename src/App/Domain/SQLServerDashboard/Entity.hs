@@ -25,7 +25,7 @@ import App.Domain.SQLServerDashboard.ValueObject
     SessionId,
     SqlServerDbName,
     SqlServerIp,
-    SqlServerName,
+    SqlServerPort,
     StateDesc,
     Status,
     TotalElapsedTime,
@@ -37,7 +37,7 @@ import GHC.Generics (Generic)
 
 data MssqlHealthDashboard = MssqlHealthDashboard
   { isServerAlive :: IsServerAlive,
-    sqlServerName :: SqlServerName,
+    sqlServerPort :: SqlServerPort,
     sqlServerIp :: SqlServerIp,
     mssqlDbHealthDashboards :: [MssqlDbHealthDashboard]
   }

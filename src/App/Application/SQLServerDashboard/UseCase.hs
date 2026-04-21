@@ -16,21 +16,32 @@ import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCom
 import App.Application.SQLServerDashboard.Repository (DashboardRepo)
 import App.Application.SQLServerDashboard.Repository qualified as DashboardRepo
 import App.Domain.SQLServerDashboard.Entity (MssqlDbHealthDashboard (..), MssqlHealthDashboard (..))
-import App.Domain.SQLServerDashboard.ValueObject (IsServerAlive (..), SqlServerDbName (..))
+import App.Domain.SQLServerDashboard.ValueObject
+  ( IsServerAlive (..),
+    SqlServerDbName (..),
+    SqlServerPort (..),
+  )
+import App.Infrastructure.Network.TCPCheck (checkTCPPort)
+import Data.String (fromString)
 import Data.Text (Text)
+import Database.MSSQLServer.Connection (ConnectInfo (..))
 import Effectful (Eff, IOE, liftIO, (:>))
 
 type DashboardRunner = forall a. Eff '[DashboardRepo, IOE] a -> IO a
 
-fetchMssqlFileIoDashboard :: (DashboardRepo :> es, IOE :> es) => [Text] -> Eff es MssqlHealthDashboard
-fetchMssqlFileIoDashboard dbNames = do
+fetchMssqlFileIoDashboard :: (DashboardRepo :> es, IOE :> es) => ConnectInfo -> [Text] -> Eff es MssqlHealthDashboard
+fetchMssqlFileIoDashboard cfg dbNames = do
   liftIO $ putStrLn "[DashboardRepo] fetching dashboard data from SQL Server..."
+  let dbHost = connectHost cfg
+      dbPort = connectPort cfg
+
+  reachable <- liftIO $ checkTCPPort dbHost dbPort
   dbHealthDashboards <- mapM fetchDbDashboard dbNames
   return
     MssqlHealthDashboard
-      { isServerAlive = IsServerAlive True, -- 仮の値
-        sqlServerName = "testServer", -- 仮の値
-        sqlServerIp = "127.0.0.1", -- 仮の値
+      { isServerAlive = IsServerAlive reachable,
+        sqlServerPort = SqlServerPort (read dbPort),
+        sqlServerIp = fromString dbHost,
         mssqlDbHealthDashboards = dbHealthDashboards
       }
   where

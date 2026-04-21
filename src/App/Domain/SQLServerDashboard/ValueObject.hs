@@ -3,12 +3,11 @@
 
 module App.Domain.SQLServerDashboard.ValueObject
   ( IsServerAlive (..),
-    SqlServerName,
-    unSqlServerName,
-    mkSqlServerName,
     SqlServerIp,
     unSqlServerIp,
     mkSqlServerIp,
+    SqlServerPort (..),
+    unSqlServerPort,
     SqlServerDbName (..),
     TypeDescription (..),
     NumOfReads,
@@ -47,16 +46,22 @@ import qualified Data.Text as T
 newtype IsServerAlive = IsServerAlive Bool
   deriving (Show, Eq, Ord)
 
-newtype SqlServerName = SqlServerName Text
-  deriving (Show, Eq, Ord, IsString)
+newtype SqlServerPort = SqlServerPort Int
+  deriving (Show, Eq, Ord)
 
-unSqlServerName :: SqlServerName -> Text
-unSqlServerName (SqlServerName t) = t
+unSqlServerPort :: SqlServerPort -> Int
+unSqlServerPort (SqlServerPort n) = n
 
-mkSqlServerName :: Text -> Either String SqlServerName
-mkSqlServerName t
-  | T.null t = Left "SqlServerName must not be empty"
-  | otherwise = Right (SqlServerName t)
+-- newtype SqlServerName = SqlServerName Text
+--   deriving (Show, Eq, Ord, IsString)
+
+-- unSqlServerName :: SqlServerName -> Text
+-- unSqlServerName (SqlServerName t) = t
+
+-- mkSqlServerName :: Text -> Either String SqlServerName
+-- mkSqlServerName t
+--   | T.null t = Left "SqlServerName must not be empty"
+--   | otherwise = Right (SqlServerName t)
 
 newtype SqlServerIp = SqlServerIp Text
   deriving (Show, Eq, Ord, IsString)

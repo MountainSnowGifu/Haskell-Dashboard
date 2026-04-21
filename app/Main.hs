@@ -52,4 +52,4 @@ main = do
           }
   sqlserverPool <- createMSSQLPool sqlserverInfo (dbPoolSize dbEnv)
 
-  runServant servantConfig sqlserverPool
+  runServant servantConfig sqlserverInfo sqlserverPool

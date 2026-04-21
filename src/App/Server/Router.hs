@@ -10,7 +10,7 @@ import App.Application.SQLServerDashboard.Subscription (DashboardSubscription (.
 import App.Application.SQLServerDashboard.UseCase (DashboardRunner)
 import App.Core.Config (Config (..))
 import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard (..))
-import App.Domain.SQLServerDashboard.ValueObject (IsServerAlive (..))
+import App.Domain.SQLServerDashboard.ValueObject (IsServerAlive (..), SqlServerPort (..))
 import App.Infrastructure.Broadcast.Channel (newBroadcastChannel, subscribe)
 import App.Infrastructure.Database.Types (MSSQLPool)
 import App.Infrastructure.Notifier.SQLServerDashboard (runDashboardNotifier)
@@ -26,6 +26,7 @@ import Control.Concurrent.STM (TVar, atomically, newTVarIO, readTChan, readTVarI
 import Control.Monad (void)
 import Data.Function ((&))
 import Data.Text (Text)
+import Database.MSSQLServer.Connection (ConnectInfo)
 import Effectful (runEff)
 import Network.HTTP.Types (status400)
 import Network.Wai (responseLBS)
@@ -42,10 +43,10 @@ import Network.WebSockets (defaultConnectionOptions)
 import Servant
 import System.Posix.Signals (Handler (..), installHandler, sigINT, sigTERM)
 
-server :: [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Server API
-server dbNames runner sub connCountRef =
-  healthHandler
-    :<|> sqlServerDashboardHandler dbNames runner
+server :: ConnectInfo -> [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Server API
+server connInfo dbNames runner sub connCountRef =
+  healthHandler connInfo
+    :<|> sqlServerDashboardHandler connInfo dbNames runner
     :<|> Tagged (websocketsOr defaultConnectionOptions (sqlServerDashboardWSHandler sub connCountRef) fallback)
     :<|> sqlServerConnectionsHandler connCountRef
   where
@@ -59,19 +60,19 @@ corsPolicy =
       corsRequestHeaders = ["Content-Type", "Authorization"]
     }
 
-app :: [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Application
-app dbNames runner sub connCountRef =
+app :: ConnectInfo -> [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Application
+app connInfo dbNames runner sub connCountRef =
   cors (const $ Just corsPolicy) $
-    serve combinedAPI (server dbNames runner sub connCountRef)
+    serve combinedAPI (server connInfo dbNames runner sub connCountRef)
 
-runServant :: Config -> MSSQLPool -> IO ()
-runServant servantConfig sqlserverPool = do
+runServant :: Config -> ConnectInfo -> MSSQLPool -> IO ()
+runServant servantConfig connInfo sqlserverPool = do
   shutdown <- newEmptyMVar
   latestRef <-
     newTVarIO
       ( MssqlHealthDashboard
           { isServerAlive = IsServerAlive False,
-            sqlServerName = "unknown",
+            sqlServerPort = SqlServerPort 0,
             sqlServerIp = "0.0.0.0",
             mssqlDbHealthDashboards = []
           }
@@ -95,7 +96,7 @@ runServant servantConfig sqlserverPool = do
           }
 
   let dbNames = monitoredDatabases servantConfig
-  pollingThread <- async (pollDashboard dbNames pollingRunner)
+  pollingThread <- async (pollDashboard connInfo dbNames pollingRunner)
 
   let settings =
         defaultSettings
@@ -112,6 +113,6 @@ runServant servantConfig sqlserverPool = do
                 void $ installHandler sigINT handler Nothing
             )
 
-  runSettings settings (app dbNames runner sub connCountRef)
+  runSettings settings (app connInfo dbNames runner sub connCountRef)
   takeMVar shutdown
   putStrLn "サーバーを終了しました"

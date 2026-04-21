@@ -42,7 +42,7 @@ import App.Domain.SQLServerDashboard.ValueObject
     unNumOfWrites,
     unSessionCount,
     unSqlServerIp,
-    unSqlServerName,
+    unSqlServerPort,
   )
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
@@ -125,7 +125,7 @@ toMssqlFileIoDashboardResponse dashboard =
 
 data MssqlHealthDashboardResponse = MssqlHealthDashboardResponse
   { isServerAlive :: Text,
-    sqlServerName :: Text,
+    sqlServerPort :: Int,
     sqlServerIp :: Text,
     mssqlDbHealthDashboards :: [MssqlDbHealthDashboardResponse]
   }
@@ -138,11 +138,11 @@ instance FromJSON MssqlHealthDashboardResponse
 toMssqlHealthDashboardResponse :: MssqlHealthDashboard -> MssqlHealthDashboardResponse
 toMssqlHealthDashboardResponse dashboard =
   let IsServerAlive alive = Entity.isServerAlive dashboard
-      name = unSqlServerName (Entity.sqlServerName dashboard)
+      port = unSqlServerPort (Entity.sqlServerPort dashboard)
       ip = unSqlServerIp (Entity.sqlServerIp dashboard)
    in MssqlHealthDashboardResponse
         { isServerAlive = if alive then "Yes" else "No",
-          sqlServerName = name,
+          sqlServerPort = port,
           sqlServerIp = ip,
           mssqlDbHealthDashboards = map toMssqlDbHealthDashboardResponse (Entity.mssqlDbHealthDashboards dashboard)
         }

@@ -62,7 +62,8 @@ executable SqlserverMonitoring
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules:    App.Application.SQLServerDashboard.Command,
+    other-modules:    App.Application.Health.UseCase,
+                      App.Application.SQLServerDashboard.Command,
                       App.Application.SQLServerDashboard.Notifier,
                       App.Application.SQLServerDashboard.Subscription,
                       App.Infrastructure.Polling.SQLServerDashboard,

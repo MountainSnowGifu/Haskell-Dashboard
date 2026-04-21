@@ -3,14 +3,15 @@ module App.Presentation.Health.Handler
   )
 where
 
-import App.Infrastructure.Network.TCPCheck (checkTCPPort)
+import App.Application.Health.UseCase (checkHealth, dbReachable)
 import App.Presentation.Health.Response (HealthResponse (..))
 import Control.Monad.IO.Class (liftIO)
 import Data.Text (pack)
+import Database.MSSQLServer.Connection (ConnectInfo (..))
 import Servant
 
-healthHandler :: Handler HealthResponse
-healthHandler = do
-  dbReachable <- liftIO $ checkTCPPort "127.0.0.1" "1433"
-  let dbStatus = if dbReachable then pack "ok" else pack "unreachable"
+healthHandler :: ConnectInfo -> Handler HealthResponse
+healthHandler cfg = do
+  result <- liftIO $ checkHealth (connectHost cfg) (connectPort cfg)
+  let dbStatus = if dbReachable result then pack "ok" else pack "unreachable"
   return $ HealthResponse {status = pack "ok", db = dbStatus}
