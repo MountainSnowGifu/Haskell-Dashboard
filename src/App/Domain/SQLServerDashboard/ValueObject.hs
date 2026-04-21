@@ -194,5 +194,5 @@ newtype PerformanceCounterName = PerformanceCounterName Text
 newtype PerformanceInstanceName = PerformanceInstanceName Text
   deriving (Show, Eq, Ord)
 
-newtype PerformanceCounterValue = PerformanceCounterValue Int
+newtype PerformanceCounterValue = PerformanceCounterValue Int -- todo trim スマートコンストラクタ
   deriving (Show, Eq, Ord)

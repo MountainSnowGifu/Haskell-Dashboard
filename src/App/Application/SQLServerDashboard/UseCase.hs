@@ -18,14 +18,9 @@ import App.Application.SQLServerDashboard.Repository qualified as DashboardRepo
 import App.Domain.SQLServerDashboard.Entity
   ( MssqlDbHealthDashboard (..),
     MssqlHealthDashboard (..),
-    MssqlOverallPerformanceDashboard (..),
   )
 import App.Domain.SQLServerDashboard.ValueObject
   ( IsServerAlive (..),
-    PerformanceCounterName (..),
-    PerformanceCounterValue (..),
-    PerformanceInstanceName (..),
-    PerformanceObjectName (..),
     SqlServerDbName (..),
     SqlServerPort (..),
   )
@@ -44,22 +39,27 @@ fetchMssqlFileIoDashboard cfg dbNames = do
       dbPort = connectPort cfg
 
   reachable <- liftIO $ checkTCPPort dbHost dbPort
-  dbHealthDashboards <- mapM fetchDbDashboard dbNames
-  return
-    MssqlHealthDashboard
-      { isServerAlive = IsServerAlive reachable,
-        sqlServerPort = SqlServerPort (read dbPort),
-        sqlServerIp = fromString dbHost,
-        mssqlOverallPerformanceDashboard =
-          [ MssqlOverallPerformanceDashboard
-              { pdbObjectName = PerformanceObjectName "Overall", -- todo
-                pdbCounterName = PerformanceCounterName "Counter",
-                pdbInstanceName = PerformanceInstanceName "Instance",
-                pdbCounterValue = PerformanceCounterValue 0
-              }
-          ],
-        mssqlDbHealthDashboards = dbHealthDashboards
-      }
+  if not reachable
+    then
+      return
+        MssqlHealthDashboard
+          { isServerAlive = IsServerAlive False,
+            sqlServerPort = SqlServerPort (read dbPort),
+            sqlServerIp = fromString dbHost,
+            mssqlOverallPerformanceDashboard = [],
+            mssqlDbHealthDashboards = []
+          }
+    else do
+      overallPerformanceRows <- DashboardRepo.getMssqlOverallPerformanceDashboard (CreateMssqlFileIoDashboardCommand "")
+      dbHealthDashboards <- mapM fetchDbDashboard dbNames
+      return
+        MssqlHealthDashboard
+          { isServerAlive = IsServerAlive reachable,
+            sqlServerPort = SqlServerPort (read dbPort),
+            sqlServerIp = fromString dbHost,
+            mssqlOverallPerformanceDashboard = overallPerformanceRows,
+            mssqlDbHealthDashboards = dbHealthDashboards
+          }
   where
     fetchDbDashboard dbName = do
       let cmd = CreateMssqlFileIoDashboardCommand dbName

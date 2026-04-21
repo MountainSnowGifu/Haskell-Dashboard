@@ -12,11 +12,21 @@ where
 
 import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCommand (..))
 import App.Application.SQLServerDashboard.Repository (DashboardRepo (..))
-import App.Domain.SQLServerDashboard.Entity (MssqlActiveRequestDashboard (..), MssqlDbStatusDashboard (..), MssqlFileIoDashboard (..), MssqlSessionDashboard (..))
+import App.Domain.SQLServerDashboard.Entity
+  ( MssqlActiveRequestDashboard (..),
+    MssqlDbStatusDashboard (..),
+    MssqlFileIoDashboard (..),
+    MssqlOverallPerformanceDashboard (..),
+    MssqlSessionDashboard (..),
+  )
 import App.Domain.SQLServerDashboard.ValueObject
   ( Command (..),
     CpuTime (..),
     LogicalReads (..),
+    PerformanceCounterName (..),
+    PerformanceCounterValue (..),
+    PerformanceInstanceName (..),
+    PerformanceObjectName (..),
     Reads (..),
     RecoveryModelDesc (..),
     SessionId (..),
@@ -58,6 +68,9 @@ type FileIoRow = (LT.Text, LT.Text, Int, Int, Int, Int)
 
 -- (db_name, session_id, status, command, cpu_time, total_elapsed_time, reads, writes, logical_reads)
 type ActiveRequestRow = (LT.Text, Int, LT.Text, LT.Text, Int, Int, Int, Int, Int)
+
+-- (object_name, counter_name, instance_name, cntr_value)
+type OverallPerformanceRow = (LT.Text, LT.Text, LT.Text, Int)
 
 sessionQuery :: Text -> Text
 sessionQuery dbName =
@@ -101,6 +114,20 @@ dbStatusQuery dbName =
   \WHERE name = '"
     <> dbName
     <> "'"
+
+overallPerformanceQuery :: Text
+overallPerformanceQuery =
+  "SELECT object_name, counter_name, instance_name, cntr_value \
+  \FROM sys.dm_os_performance_counters \
+  \WHERE counter_name IN ( \
+  \    'Batch Requests/sec', \
+  \    'Transactions/sec', \
+  \    'User Connections', \
+  \    'Lock Waits/sec', \
+  \    'Page life expectancy' \
+  \) \
+  \AND (instance_name = '' OR instance_name = '_Total') \
+  \ORDER BY object_name, counter_name"
 
 activeRequestQuery :: Text -> Text
 activeRequestQuery dbName =
@@ -154,6 +181,15 @@ toDbStatusEntity (name, stateDesc, recoveryModel, userAccess) =
       dbsStateDesc = StateDesc (LT.toStrict stateDesc),
       dbsRecoveryModelDesc = RecoveryModelDesc (LT.toStrict recoveryModel),
       dbsUserAccessDesc = UserAccessDesc (LT.toStrict userAccess)
+    }
+
+toOverallPerformanceEntity :: OverallPerformanceRow -> MssqlOverallPerformanceDashboard
+toOverallPerformanceEntity (objectName, counterName, instanceName, cntrValue) =
+  MssqlOverallPerformanceDashboard
+    { pdbObjectName = PerformanceObjectName (LT.toStrict objectName),
+      pdbCounterName = PerformanceCounterName (LT.toStrict counterName),
+      pdbInstanceName = PerformanceInstanceName (LT.toStrict instanceName),
+      pdbCounterValue = PerformanceCounterValue cntrValue
     }
 
 toEntity :: FileIoRow -> Either String MssqlFileIoDashboard
@@ -234,3 +270,16 @@ runDashboardRepo pool = interpret $ \_ -> \case
       case rows of
         [] -> ioError (userError "No status data returned for the given database")
         (r : _) -> return (toDbStatusEntity r)
+  FetchMssqlOverallPerformanceDashboardOp _cmd ->
+    liftIO $ withMSSQLConn pool $ \conn -> do
+      rows <-
+        rpcRows
+          =<< ( rpc
+                  conn
+                  ( RpcQuery
+                      SP_ExecuteSql
+                      (nvarcharVal "" (Just overallPerformanceQuery))
+                  ) ::
+                  IO (RpcResponse () [OverallPerformanceRow])
+              )
+      return (map toOverallPerformanceEntity rows)
