@@ -11,6 +11,7 @@ module App.Presentation.SQLServerDashboard.Response
     toMssqlHealthDashboardResponse,
     toMssqlSessionDashboardResponse,
     toMssqlDbStatusDashboardResponse,
+    toMssqlOverallPerformanceDashboardResponse,
   )
 where
 
@@ -18,6 +19,7 @@ import App.Domain.SQLServerDashboard.Entity
   ( MssqlDbStatusDashboard,
     MssqlFileIoDashboard,
     MssqlHealthDashboard,
+    MssqlOverallPerformanceDashboard,
     MssqlSessionDashboard,
   )
 import qualified App.Domain.SQLServerDashboard.Entity as Entity
@@ -26,6 +28,10 @@ import App.Domain.SQLServerDashboard.ValueObject
     CpuTime (..),
     IsServerAlive (..),
     LogicalReads (..),
+    PerformanceCounterName (..),
+    PerformanceCounterValue (..),
+    PerformanceInstanceName (..),
+    PerformanceObjectName (..),
     Reads (..),
     RecoveryModelDesc (..),
     SessionId (..),
@@ -47,6 +53,31 @@ import App.Domain.SQLServerDashboard.ValueObject
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+
+data MssqlOverallPerformanceDashboardResponse = MssqlOverallPerformanceDashboardResponse
+  { pdbObjectName :: Text,
+    pdbCounterName :: Text,
+    pdbInstanceName :: Text,
+    pdbCounterValue :: Int
+  }
+  deriving (Show, Generic)
+
+instance ToJSON MssqlOverallPerformanceDashboardResponse
+
+instance FromJSON MssqlOverallPerformanceDashboardResponse
+
+toMssqlOverallPerformanceDashboardResponse :: MssqlOverallPerformanceDashboard -> MssqlOverallPerformanceDashboardResponse
+toMssqlOverallPerformanceDashboardResponse dashboard =
+  let PerformanceObjectName objName = Entity.pdbObjectName dashboard
+      PerformanceCounterName counterName = Entity.pdbCounterName dashboard
+      PerformanceInstanceName instanceName = Entity.pdbInstanceName dashboard
+      PerformanceCounterValue counterValue = Entity.pdbCounterValue dashboard
+   in MssqlOverallPerformanceDashboardResponse
+        { pdbObjectName = objName,
+          pdbCounterName = counterName,
+          pdbInstanceName = instanceName,
+          pdbCounterValue = counterValue
+        }
 
 data MssqlDbStatusDashboardResponse = MssqlDbStatusDashboardResponse
   { dbsSqlServerDbName :: Text,
@@ -127,6 +158,7 @@ data MssqlHealthDashboardResponse = MssqlHealthDashboardResponse
   { isServerAlive :: Text,
     sqlServerPort :: Int,
     sqlServerIp :: Text,
+    mssqlOverallPerformanceDashboard :: [MssqlOverallPerformanceDashboardResponse],
     mssqlDbHealthDashboards :: [MssqlDbHealthDashboardResponse]
   }
   deriving (Show, Generic)
@@ -144,6 +176,7 @@ toMssqlHealthDashboardResponse dashboard =
         { isServerAlive = if alive then "Yes" else "No",
           sqlServerPort = port,
           sqlServerIp = ip,
+          mssqlOverallPerformanceDashboard = map toMssqlOverallPerformanceDashboardResponse (Entity.mssqlOverallPerformanceDashboard dashboard),
           mssqlDbHealthDashboards = map toMssqlDbHealthDashboardResponse (Entity.mssqlDbHealthDashboards dashboard)
         }
 

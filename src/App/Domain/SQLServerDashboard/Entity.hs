@@ -7,6 +7,7 @@ module App.Domain.SQLServerDashboard.Entity
     MssqlSessionDashboard (..),
     MssqlActiveRequestDashboard (..),
     MssqlDbStatusDashboard (..),
+    MssqlOverallPerformanceDashboard (..),
   )
 where
 
@@ -19,6 +20,10 @@ import App.Domain.SQLServerDashboard.ValueObject
     LogicalReads,
     NumOfReads,
     NumOfWrites,
+    PerformanceCounterName,
+    PerformanceCounterValue,
+    PerformanceInstanceName,
+    PerformanceObjectName,
     Reads,
     RecoveryModelDesc,
     SessionCount,
@@ -39,7 +44,16 @@ data MssqlHealthDashboard = MssqlHealthDashboard
   { isServerAlive :: IsServerAlive,
     sqlServerPort :: SqlServerPort,
     sqlServerIp :: SqlServerIp,
+    mssqlOverallPerformanceDashboard :: [MssqlOverallPerformanceDashboard],
     mssqlDbHealthDashboards :: [MssqlDbHealthDashboard]
+  }
+  deriving (Show, Eq, Generic)
+
+data MssqlOverallPerformanceDashboard = MssqlOverallPerformanceDashboard
+  { pdbObjectName :: PerformanceObjectName,
+    pdbCounterName :: PerformanceCounterName,
+    pdbInstanceName :: PerformanceInstanceName,
+    pdbCounterValue :: PerformanceCounterValue
   }
   deriving (Show, Eq, Generic)
 

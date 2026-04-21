@@ -130,6 +130,18 @@ WHERE counter_name IN (
 AND (instance_name = '' OR instance_name = '_Total')
 ORDER BY object_name, counter_name;
 
+SELECT counter_name, instance_name, cntr_value
+FROM sys.dm_os_performance_counters
+WHERE object_name LIKE '%:Databases%'
+  AND instance_name = 'あなたのデータベース名' -- ここを書き換える
+  AND counter_name IN (
+    'Transactions/sec',
+    'Log Growths',        -- ログの自動拡張回数（多いと遅延の原因）
+    'Active Transactions', -- 現在動いているトランザクション数
+    'Data File(s) Size (KB)',
+    'Log File(s) Size (KB)'
+  );
+
 sqlcmd -S <サーバ名> -U <ユーザー> -P <パスワード> -Q "SET NOCOUNT ON;
 
 PRINT '=== Active Requests ===';

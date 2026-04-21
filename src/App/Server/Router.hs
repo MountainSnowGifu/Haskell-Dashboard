@@ -9,8 +9,15 @@ where
 import App.Application.SQLServerDashboard.Subscription (DashboardSubscription (..))
 import App.Application.SQLServerDashboard.UseCase (DashboardRunner)
 import App.Core.Config (Config (..))
-import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard (..))
-import App.Domain.SQLServerDashboard.ValueObject (IsServerAlive (..), SqlServerPort (..))
+import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard (..), MssqlOverallPerformanceDashboard (..))
+import App.Domain.SQLServerDashboard.ValueObject
+  ( IsServerAlive (..),
+    PerformanceCounterName (..),
+    PerformanceCounterValue (..),
+    PerformanceInstanceName (..),
+    PerformanceObjectName (..),
+    SqlServerPort (..),
+  )
 import App.Infrastructure.Broadcast.Channel (newBroadcastChannel, subscribe)
 import App.Infrastructure.Database.Types (MSSQLPool)
 import App.Infrastructure.Notifier.SQLServerDashboard (runDashboardNotifier)
@@ -74,6 +81,14 @@ runServant servantConfig connInfo sqlserverPool = do
           { isServerAlive = IsServerAlive False,
             sqlServerPort = SqlServerPort 0,
             sqlServerIp = "0.0.0.0",
+            mssqlOverallPerformanceDashboard =
+              [ MssqlOverallPerformanceDashboard
+                  { pdbObjectName = PerformanceObjectName "",
+                    pdbCounterName = PerformanceCounterName "",
+                    pdbInstanceName = PerformanceInstanceName "",
+                    pdbCounterValue = PerformanceCounterValue 0
+                  }
+              ],
             mssqlDbHealthDashboards = []
           }
       )

@@ -15,9 +15,17 @@ where
 import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCommand (..))
 import App.Application.SQLServerDashboard.Repository (DashboardRepo)
 import App.Application.SQLServerDashboard.Repository qualified as DashboardRepo
-import App.Domain.SQLServerDashboard.Entity (MssqlDbHealthDashboard (..), MssqlHealthDashboard (..))
+import App.Domain.SQLServerDashboard.Entity
+  ( MssqlDbHealthDashboard (..),
+    MssqlHealthDashboard (..),
+    MssqlOverallPerformanceDashboard (..),
+  )
 import App.Domain.SQLServerDashboard.ValueObject
   ( IsServerAlive (..),
+    PerformanceCounterName (..),
+    PerformanceCounterValue (..),
+    PerformanceInstanceName (..),
+    PerformanceObjectName (..),
     SqlServerDbName (..),
     SqlServerPort (..),
   )
@@ -42,6 +50,14 @@ fetchMssqlFileIoDashboard cfg dbNames = do
       { isServerAlive = IsServerAlive reachable,
         sqlServerPort = SqlServerPort (read dbPort),
         sqlServerIp = fromString dbHost,
+        mssqlOverallPerformanceDashboard =
+          [ MssqlOverallPerformanceDashboard
+              { pdbObjectName = PerformanceObjectName "Overall", -- todo
+                pdbCounterName = PerformanceCounterName "Counter",
+                pdbInstanceName = PerformanceInstanceName "Instance",
+                pdbCounterValue = PerformanceCounterValue 0
+              }
+          ],
         mssqlDbHealthDashboards = dbHealthDashboards
       }
   where

@@ -36,6 +36,10 @@ module App.Domain.SQLServerDashboard.ValueObject
     StateDesc (..),
     RecoveryModelDesc (..),
     UserAccessDesc (..),
+    PerformanceObjectName (..),
+    PerformanceCounterName (..),
+    PerformanceInstanceName (..),
+    PerformanceCounterValue (..),
   )
 where
 
@@ -179,4 +183,16 @@ newtype RecoveryModelDesc = RecoveryModelDesc Text
   deriving (Show, Eq, Ord)
 
 newtype UserAccessDesc = UserAccessDesc Text
+  deriving (Show, Eq, Ord)
+
+newtype PerformanceObjectName = PerformanceObjectName Text
+  deriving (Show, Eq, Ord)
+
+newtype PerformanceCounterName = PerformanceCounterName Text
+  deriving (Show, Eq, Ord)
+
+newtype PerformanceInstanceName = PerformanceInstanceName Text
+  deriving (Show, Eq, Ord)
+
+newtype PerformanceCounterValue = PerformanceCounterValue Int
   deriving (Show, Eq, Ord)
