@@ -27,8 +27,7 @@ import App.Presentation.Health.Handler (healthHandler)
 import App.Presentation.SQLServerDashboard.Handler (sqlServerConnectionsHandler, sqlServerDashboardHandler)
 import App.Presentation.SQLServerDashboard.WSHandler (sqlServerDashboardWSHandler)
 import App.Server.API (API, combinedAPI)
-import Control.Concurrent (newEmptyMVar, putMVar, takeMVar)
-import Control.Concurrent.Async (async, cancel)
+import Control.Concurrent.Async (async)
 import Control.Concurrent.STM (TVar, atomically, newTVarIO, readTChan, readTVarIO)
 import Control.Monad (void)
 import Data.Function ((&))
@@ -40,15 +39,14 @@ import Network.Wai (responseLBS)
 import Network.Wai.Handler.Warp
   ( defaultSettings,
     runSettings,
-    setGracefulShutdownTimeout,
-    setInstallShutdownHandler,
     setPort,
   )
 import Network.Wai.Handler.WebSockets (websocketsOr)
 import Network.Wai.Middleware.Cors
 import Network.WebSockets (defaultConnectionOptions)
 import Servant
-import System.Posix.Signals (Handler (..), installHandler, sigINT, sigTERM)
+
+-- import System.Posix.Signals (Handler (..), installHandler, sigINT, sigTERM)
 
 server :: ConnectInfo -> [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Server API
 server connInfo dbNames runner sub connCountRef =
@@ -74,7 +72,6 @@ app connInfo dbNames runner sub connCountRef =
 
 runServant :: Config -> ConnectInfo -> MSSQLPool -> IO ()
 runServant servantConfig connInfo sqlserverPool = do
-  shutdown <- newEmptyMVar
   latestRef <-
     newTVarIO
       ( MssqlHealthDashboard
@@ -111,23 +108,10 @@ runServant servantConfig connInfo sqlserverPool = do
           }
 
   let dbNames = monitoredDatabases servantConfig
-  pollingThread <- async (pollDashboard connInfo dbNames pollingRunner)
+  void $ async (pollDashboard connInfo dbNames pollingRunner)
 
   let settings =
         defaultSettings
           & setPort (port servantConfig)
-          & setGracefulShutdownTimeout (Just 30)
-          & setInstallShutdownHandler
-            ( \closeSocket -> do
-                let handler = Catch $ do
-                      putStrLn "シャットダウン中..."
-                      cancel pollingThread
-                      closeSocket
-                      putMVar shutdown ()
-                void $ installHandler sigTERM handler Nothing
-                void $ installHandler sigINT handler Nothing
-            )
 
   runSettings settings (app connInfo dbNames runner sub connCountRef)
-  takeMVar shutdown
-  putStrLn "サーバーを終了しました"
