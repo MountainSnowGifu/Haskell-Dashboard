@@ -14,6 +14,7 @@ import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCom
 import App.Application.SQLServerDashboard.Repository (DashboardRepo (..))
 import App.Domain.SQLServerDashboard.Entity
   ( MssqlActiveRequestDashboard (..),
+    MssqlBlockStatusDashboard (..),
     MssqlDbStatusDashboard (..),
     MssqlFileIoDashboard (..),
     MssqlOverallPerformanceDashboard (..),
@@ -22,20 +23,27 @@ import App.Domain.SQLServerDashboard.Entity
 import App.Domain.SQLServerDashboard.ValueObject
   ( Command (..),
     CpuTime (..),
+    HostName (..),
     LogicalReads (..),
+    LoginName (..),
     PerformanceCounterName (..),
     PerformanceCounterValue (..),
     PerformanceInstanceName (..),
     PerformanceObjectName (..),
+    ProgramName (..),
     Reads (..),
     RecoveryModelDesc (..),
     SessionId (..),
     SqlServerDbName (..),
+    SqlText (..),
     StateDesc (..),
     Status (..),
     TotalElapsedTime (..),
     TypeDescription (..),
     UserAccessDesc (..),
+    WaitResource (..),
+    WaitTime (..),
+    WaitType (..),
     Writes (..),
     mkAvgReadMs,
     mkAvgWriteMs,
@@ -71,6 +79,9 @@ type ActiveRequestRow = (LT.Text, Int, LT.Text, LT.Text, Int, Int, Int, Int, Int
 
 -- (object_name, counter_name, instance_name, cntr_value)
 type OverallPerformanceRow = (LT.Text, LT.Text, LT.Text, Int)
+
+-- (session_id, blocking_session_id, status, wait_type, wait_time, wait_resource, command, database_name, host_name, program_name, login_name, sql_text)
+type BlockStatusRow = (Int, Int, LT.Text, LT.Text, Int, LT.Text, LT.Text, LT.Text, LT.Text, LT.Text, LT.Text, LT.Text)
 
 sessionQuery :: Text -> Text
 sessionQuery dbName =
@@ -147,6 +158,32 @@ activeRequestQuery dbName =
     <> "') \
        \ORDER BY r.cpu_time DESC"
 
+blockStatusQuery :: Text -> Text
+blockStatusQuery dbName =
+  "SELECT \
+  \    CAST(r.session_id AS INT), \
+  \    CAST(r.blocking_session_id AS INT), \
+  \    r.status, \
+  \    ISNULL(r.wait_type, N''), \
+  \    r.wait_time, \
+  \    ISNULL(r.wait_resource, N''), \
+  \    r.command, \
+  \    DB_NAME(r.database_id), \
+  \    s.host_name, \
+  \    s.program_name, \
+  \    s.login_name, \
+  \    ISNULL(CAST(t.text AS NVARCHAR(MAX)), N'') \
+  \FROM sys.dm_exec_requests r \
+  \JOIN sys.dm_exec_sessions s \
+  \    ON r.session_id = s.session_id \
+  \OUTER APPLY sys.dm_exec_sql_text(r.sql_handle) t \
+  \WHERE r.session_id <> @@SPID \
+  \  AND r.database_id = DB_ID('"
+    <> dbName
+    <> "') \
+       \  AND (r.blocking_session_id <> 0 OR r.wait_type LIKE 'LCK%') \
+       \ORDER BY r.wait_time DESC"
+
 rpcRows :: RpcResponse a b -> IO b
 rpcRows (RpcResponse _ _ rs) = return rs
 rpcRows (RpcResponseError info) = ioError (userError $ "SQL Server error: " ++ show info)
@@ -181,6 +218,23 @@ toDbStatusEntity (name, stateDesc, recoveryModel, userAccess) =
       dbsStateDesc = StateDesc (LT.toStrict stateDesc),
       dbsRecoveryModelDesc = RecoveryModelDesc (LT.toStrict recoveryModel),
       dbsUserAccessDesc = UserAccessDesc (LT.toStrict userAccess)
+    }
+
+toBlockStatusEntity :: BlockStatusRow -> MssqlBlockStatusDashboard
+toBlockStatusEntity (sessionId, blockingSessionId, status, waitType, waitTime, waitResource, command, dbName, hostName, programName, loginName, sqlText) =
+  MssqlBlockStatusDashboard
+    { bsSessionId = SessionId sessionId,
+      bsBlockingSessionId = SessionId blockingSessionId,
+      bsStatus = Status (LT.toStrict status),
+      bsWaitType = WaitType (LT.toStrict waitType),
+      bsWaitTime = WaitTime (LT.toStrict (LT.pack (show waitTime))),
+      bsWaitResource = WaitResource (LT.toStrict waitResource),
+      bsCommand = Command (LT.toStrict command),
+      bsDatabaseName = SqlServerDbName (LT.toStrict dbName),
+      bsHostName = HostName (LT.toStrict hostName),
+      bsProgramName = ProgramName (LT.toStrict programName),
+      bsLoginName = LoginName (LT.toStrict loginName),
+      bsSqlText = SqlText (LT.toStrict sqlText)
     }
 
 toOverallPerformanceEntity :: OverallPerformanceRow -> MssqlOverallPerformanceDashboard
@@ -283,3 +337,16 @@ runDashboardRepo pool = interpret $ \_ -> \case
                   IO (RpcResponse () [OverallPerformanceRow])
               )
       return (map toOverallPerformanceEntity rows)
+  FetchMssqlBlockStatusDashboardOp cmd ->
+    liftIO $ withMSSQLConn pool $ \conn -> do
+      rows <-
+        rpcRows
+          =<< ( rpc
+                  conn
+                  ( RpcQuery
+                      SP_ExecuteSql
+                      (nvarcharVal "" (Just (blockStatusQuery (cmdDbName cmd))))
+                  ) ::
+                  IO (RpcResponse () [BlockStatusRow])
+              )
+      return (map toBlockStatusEntity rows)
