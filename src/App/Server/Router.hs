@@ -20,6 +20,7 @@ import App.Domain.SQLServerDashboard.ValueObject
   )
 import App.Infrastructure.Broadcast.Channel (newBroadcastChannel, subscribe)
 import App.Infrastructure.Database.Types (MSSQLPool)
+import App.Infrastructure.Network.ServerReachability (runServerReachability)
 import App.Infrastructure.Notifier.SQLServerDashboard (runDashboardNotifier)
 import App.Infrastructure.Polling.SQLServerDashboard (PollingRunner, pollDashboard)
 import App.Infrastructure.Repository.SQLServerDashboard.SQLServerDashboardSQLServer (runDashboardRepo)
@@ -95,10 +96,10 @@ runServant servantConfig connInfo sqlserverPool = do
   connCountRef <- newTVarIO (0 :: Int)
 
   let runner :: DashboardRunner
-      runner eff = runEff (runDashboardRepo sqlserverPool eff)
+      runner eff = runEff (runServerReachability (runDashboardRepo sqlserverPool eff))
 
       pollingRunner :: PollingRunner
-      pollingRunner eff = runEff (runDashboardNotifier latestRef broadcastChan (runDashboardRepo sqlserverPool eff))
+      pollingRunner eff = runEff (runDashboardNotifier latestRef broadcastChan (runServerReachability (runDashboardRepo sqlserverPool eff)))
 
       sub :: DashboardSubscription
       sub =

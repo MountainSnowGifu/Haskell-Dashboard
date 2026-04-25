@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module App.Domain.SQLServerDashboard.ValueObject.Performance
   ( PerformanceObjectName,
     PerformanceCounterName,
