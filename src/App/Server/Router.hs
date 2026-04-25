@@ -36,9 +36,11 @@ import Database.MSSQLServer.Connection (ConnectInfo)
 import Effectful (runEff)
 import Network.HTTP.Types (status400)
 import Network.Wai (responseLBS)
+import Data.String (fromString)
 import Network.Wai.Handler.Warp
   ( defaultSettings,
     runSettings,
+    setHost,
     setPort,
   )
 import Network.Wai.Handler.WebSockets (websocketsOr)
@@ -113,5 +115,6 @@ runServant servantConfig connInfo sqlserverPool = do
   let settings =
         defaultSettings
           & setPort (port servantConfig)
+          & setHost (fromString (host servantConfig))
 
   runSettings settings (app connInfo dbNames runner sub connCountRef)
