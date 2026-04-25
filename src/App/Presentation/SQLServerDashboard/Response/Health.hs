@@ -34,6 +34,10 @@ import App.Presentation.SQLServerDashboard.Response.FileIo
   ( MssqlFileIoDashboardResponse,
     toMssqlFileIoDashboardResponse,
   )
+import App.Presentation.SQLServerDashboard.Response.LogUsage
+  ( MssqlLogUsageDashboardResponse,
+    toMssqlLogUsageDashboardResponse,
+  )
 import App.Presentation.SQLServerDashboard.Response.Performance
   ( MssqlOverallPerformanceDashboardResponse,
     toMssqlOverallPerformanceDashboardResponse,
@@ -78,7 +82,8 @@ data MssqlDbHealthDashboardResponse = MssqlDbHealthDashboardResponse
     mssqlSessionDashboard :: MssqlSessionDashboardResponse,
     mssqlActiveRequestDashboard :: [MssqlActiveRequestDashboardResponse],
     mssqlDbStatusDashboard :: MssqlDbStatusDashboardResponse,
-    mssqlBlockStatusDashboard :: [MssqlBlockStatusDashboardResponse]
+    mssqlBlockStatusDashboard :: [MssqlBlockStatusDashboardResponse],
+    mssqlLogUsageDashboardResponse :: MssqlLogUsageDashboardResponse
   }
   deriving (Show, Generic)
 
@@ -91,16 +96,18 @@ toMssqlDbHealthDashboardResponse dashboard =
   let SqlServerDbName dbName = Entity.dbhSqlServerDbName dashboard
       fileIo = map toMssqlFileIoDashboardResponse (Entity.dbhMssqlFileIoDashboard dashboard)
       session = toMssqlSessionDashboardResponse (Entity.dbhMssqlSessionDashboard dashboard)
-      activeRequests = map toMssqlActiveRequestDashboardResponse (Entity.dbhMsqlActiveRequestDashboard dashboard)
+      activeRequests = map toMssqlActiveRequestDashboardResponse (Entity.dbhMssqlActiveRequestDashboard dashboard)
       dbStatus = toMssqlDbStatusDashboardResponse (Entity.dbhMssqlDbStatusDashboard dashboard)
       blockStatus = map toBlockStatusResponse (Entity.dbhMssqlBlockStatusDashboard dashboard)
+      logUsage = toMssqlLogUsageDashboardResponse (Entity.dbhMssqlLogUsageDashboard dashboard)
    in MssqlDbHealthDashboardResponse
         { dbHealthSqlServerDbName = dbName,
           mssqlFileIoDashboard = fileIo,
           mssqlSessionDashboard = session,
           mssqlActiveRequestDashboard = activeRequests,
           mssqlDbStatusDashboard = dbStatus,
-          mssqlBlockStatusDashboard = blockStatus
+          mssqlBlockStatusDashboard = blockStatus,
+          mssqlLogUsageDashboardResponse = logUsage
         }
 
 newtype ConnectionCountResponse = ConnectionCountResponse

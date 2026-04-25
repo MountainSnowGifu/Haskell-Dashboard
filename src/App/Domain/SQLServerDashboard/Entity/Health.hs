@@ -10,6 +10,7 @@ import App.Domain.SQLServerDashboard.Entity.ActiveRequest (MssqlActiveRequestDas
 import App.Domain.SQLServerDashboard.Entity.BlockStatus (MssqlBlockStatusDashboard)
 import App.Domain.SQLServerDashboard.Entity.DbStatus (MssqlDbStatusDashboard)
 import App.Domain.SQLServerDashboard.Entity.FileIo (MssqlFileIoDashboard)
+import App.Domain.SQLServerDashboard.Entity.LogUsage (MssqlLogUsageDashboard)
 import App.Domain.SQLServerDashboard.Entity.Performance (MssqlOverallPerformanceDashboard)
 import App.Domain.SQLServerDashboard.Entity.Session (MssqlSessionDashboard)
 import App.Domain.SQLServerDashboard.ValueObject
@@ -33,8 +34,9 @@ data MssqlDbHealthDashboard = MssqlDbHealthDashboard
   { dbhSqlServerDbName :: SqlServerDbName,
     dbhMssqlFileIoDashboard :: [MssqlFileIoDashboard],
     dbhMssqlSessionDashboard :: MssqlSessionDashboard,
-    dbhMsqlActiveRequestDashboard :: [MssqlActiveRequestDashboard],
+    dbhMssqlActiveRequestDashboard :: [MssqlActiveRequestDashboard],
     dbhMssqlDbStatusDashboard :: MssqlDbStatusDashboard,
-    dbhMssqlBlockStatusDashboard :: [MssqlBlockStatusDashboard]
+    dbhMssqlBlockStatusDashboard :: [MssqlBlockStatusDashboard],
+    dbhMssqlLogUsageDashboard :: MssqlLogUsageDashboard
   }
   deriving (Show, Eq, Generic)

@@ -68,12 +68,14 @@ fetchMssqlFileIoDashboard cfg dbNames = do
       activeRequestRows <- DashboardRepo.getMssqlActiveRequestDashboard cmd
       dbStatusRows <- DashboardRepo.getMssqlDbStatusDashboard cmd
       blockStatusRows <- DashboardRepo.getMssqlBlockStatusDashboard cmd
+      logUsageRow <- DashboardRepo.getMssqlLogUsageDashboard cmd
       return
         MssqlDbHealthDashboard
           { dbhSqlServerDbName = SqlServerDbName dbName,
             dbhMssqlFileIoDashboard = fileIoRows,
             dbhMssqlSessionDashboard = sessionRow,
-            dbhMsqlActiveRequestDashboard = activeRequestRows,
+            dbhMssqlActiveRequestDashboard = activeRequestRows,
             dbhMssqlDbStatusDashboard = dbStatusRows,
-            dbhMssqlBlockStatusDashboard = blockStatusRows
+            dbhMssqlBlockStatusDashboard = blockStatusRows,
+            dbhMssqlLogUsageDashboard = logUsageRow
           }

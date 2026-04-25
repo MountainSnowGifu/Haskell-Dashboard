@@ -17,19 +17,18 @@ import App.Domain.SQLServerDashboard.Entity
     MssqlBlockStatusDashboard (..),
     MssqlDbStatusDashboard (..),
     MssqlFileIoDashboard (..),
+    MssqlLogUsageDashboard (..),
     MssqlOverallPerformanceDashboard (..),
     MssqlSessionDashboard (..),
   )
 import App.Domain.SQLServerDashboard.ValueObject
-  ( Command (..),
+  ( AlertLevel (..),
+    Command (..),
     CpuTime (..),
     HostName (..),
     LogicalReads (..),
     LoginName (..),
-    PerformanceCounterName (..),
     PerformanceCounterValue (..),
-    PerformanceInstanceName (..),
-    PerformanceObjectName (..),
     ProgramName (..),
     Reads (..),
     RecoveryModelDesc (..),
@@ -39,7 +38,10 @@ import App.Domain.SQLServerDashboard.ValueObject
     StateDesc (..),
     Status (..),
     TotalElapsedTime (..),
+    TotalLogSizeMB (..),
     TypeDescription (..),
+    UsedLogSpaceMB (..),
+    UsedLogSpacePercent (..),
     UserAccessDesc (..),
     WaitResource (..),
     WaitTime (..),
@@ -51,6 +53,7 @@ import App.Domain.SQLServerDashboard.ValueObject
     mkNumOfWrites,
     mkSessionCount,
   )
+import App.Domain.SQLServerDashboard.ValueObject.Performance (mkPerformanceCounterName, mkPerformanceInstanceName, mkPerformanceObjectName)
 import App.Infrastructure.Database.SqlServer (withMSSQLConn)
 import App.Infrastructure.Database.Types (MSSQLPool)
 import Data.Text (Text)
@@ -82,6 +85,9 @@ type OverallPerformanceRow = (LT.Text, LT.Text, LT.Text, Int)
 
 -- (session_id, blocking_session_id, status, wait_type, wait_time, wait_resource, command, database_name, host_name, program_name, login_name, sql_text)
 type BlockStatusRow = (Int, Int, LT.Text, LT.Text, Int, LT.Text, LT.Text, LT.Text, LT.Text, LT.Text, LT.Text, LT.Text)
+
+-- (db_name, total_log_size_mb, used_log_space_mb, used_log_space_percent, alert_level)
+type LogUsageRow = (LT.Text, Float, Float, Float, LT.Text)
 
 sessionQuery :: Text -> Text
 sessionQuery dbName =
@@ -240,10 +246,37 @@ toBlockStatusEntity (sessionId, blockingSessionId, status, waitType, waitTime, w
 toOverallPerformanceEntity :: OverallPerformanceRow -> MssqlOverallPerformanceDashboard
 toOverallPerformanceEntity (objectName, counterName, instanceName, cntrValue) =
   MssqlOverallPerformanceDashboard
-    { pdbObjectName = PerformanceObjectName (LT.toStrict objectName),
-      pdbCounterName = PerformanceCounterName (LT.toStrict counterName),
-      pdbInstanceName = PerformanceInstanceName (LT.toStrict instanceName),
+    { pdbObjectName = mkPerformanceObjectName (LT.toStrict objectName),
+      pdbCounterName = mkPerformanceCounterName (LT.toStrict counterName),
+      pdbInstanceName = mkPerformanceInstanceName (LT.toStrict instanceName),
       pdbCounterValue = PerformanceCounterValue cntrValue
+    }
+
+logUsageQuery :: Text -> Text
+logUsageQuery dbName =
+  "USE ["
+    <> dbName
+    <> "]; \
+       \SELECT \
+       \    DB_NAME(database_id) AS db_name, \
+       \    CAST(total_log_size_in_bytes / 1024.0 / 1024.0 AS FLOAT) AS total_log_size_mb, \
+       \    CAST(used_log_space_in_bytes / 1024.0 / 1024.0 AS FLOAT) AS used_log_space_mb, \
+       \    CAST(used_log_space_in_percent AS FLOAT) AS used_log_space_percent, \
+       \    CASE \
+       \        WHEN used_log_space_in_percent >= 90 THEN N'CRITICAL' \
+       \        WHEN used_log_space_in_percent >= 80 THEN N'WARNING' \
+       \        ELSE N'OK' \
+       \    END AS alert_level \
+       \FROM sys.dm_db_log_space_usage"
+
+toLogUsageEntity :: LogUsageRow -> MssqlLogUsageDashboard
+toLogUsageEntity (dbName, totalSize, usedSpace, usedPercent, alert) =
+  MssqlLogUsageDashboard
+    { lugSqlServerDbName = SqlServerDbName (LT.toStrict dbName),
+      lugTotalLogSizeMB = TotalLogSizeMB totalSize,
+      lugUsedLogSpaceMB = UsedLogSpaceMB usedSpace,
+      lugUsedLogSpacePercent = UsedLogSpacePercent usedPercent,
+      lugAlertLevel = AlertLevel (LT.toStrict alert)
     }
 
 toEntity :: FileIoRow -> Either String MssqlFileIoDashboard
@@ -254,12 +287,12 @@ toEntity (name, typeDesc, numReads, numWrites, avgRead, avgWrite) = do
   avgWriteMs' <- mkAvgWriteMs avgWrite
   return
     MssqlFileIoDashboard
-      { sqlServerDbName = SqlServerDbName (LT.toStrict name),
-        typeDescription = TypeDescription (LT.toStrict typeDesc),
-        numOfReads = numOfReads',
-        numOfWrites = numOfWrites',
-        avgReadMs = avgReadMs',
-        avgWriteMs = avgWriteMs'
+      { fioSqlServerDbName = SqlServerDbName (LT.toStrict name),
+        fioTypeDescription = TypeDescription (LT.toStrict typeDesc),
+        fioNumOfReads = numOfReads',
+        fioNumOfWrites = numOfWrites',
+        fioAvgReadMs = avgReadMs',
+        fioAvgWriteMs = avgWriteMs'
       }
 
 runDashboardRepo ::
@@ -350,3 +383,18 @@ runDashboardRepo pool = interpret $ \_ -> \case
                   IO (RpcResponse () [BlockStatusRow])
               )
       return (map toBlockStatusEntity rows)
+  FetchMssqlLogUsageDashboardOp cmd ->
+    liftIO $ withMSSQLConn pool $ \conn -> do
+      rows <-
+        rpcRows
+          =<< ( rpc
+                  conn
+                  ( RpcQuery
+                      SP_ExecuteSql
+                      (nvarcharVal "" (Just (logUsageQuery (cmdDbName cmd))))
+                  ) ::
+                  IO (RpcResponse () [LogUsageRow])
+              )
+      case rows of
+        [] -> ioError (userError "No log usage data returned for the given database")
+        (r : _) -> return (toLogUsageEntity r)

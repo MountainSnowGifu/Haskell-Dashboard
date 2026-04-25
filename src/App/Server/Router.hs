@@ -12,11 +12,11 @@ import App.Core.Config (Config (..))
 import App.Domain.SQLServerDashboard.Entity (MssqlHealthDashboard (..), MssqlOverallPerformanceDashboard (..))
 import App.Domain.SQLServerDashboard.ValueObject
   ( IsServerAlive (..),
-    PerformanceCounterName (..),
     PerformanceCounterValue (..),
-    PerformanceInstanceName (..),
-    PerformanceObjectName (..),
     SqlServerPort (..),
+    mkPerformanceCounterName,
+    mkPerformanceInstanceName,
+    mkPerformanceObjectName,
   )
 import App.Infrastructure.Broadcast.Channel (newBroadcastChannel, subscribe)
 import App.Infrastructure.Database.Types (MSSQLPool)
@@ -31,12 +31,12 @@ import Control.Concurrent.Async (async)
 import Control.Concurrent.STM (TVar, atomically, newTVarIO, readTChan, readTVarIO)
 import Control.Monad (void)
 import Data.Function ((&))
+import Data.String (fromString)
 import Data.Text (Text)
 import Database.MSSQLServer.Connection (ConnectInfo)
 import Effectful (runEff)
 import Network.HTTP.Types (status400)
 import Network.Wai (responseLBS)
-import Data.String (fromString)
 import Network.Wai.Handler.Warp
   ( defaultSettings,
     runSettings,
@@ -82,9 +82,9 @@ runServant servantConfig connInfo sqlserverPool = do
             sqlServerIp = "0.0.0.0",
             mssqlOverallPerformanceDashboard =
               [ MssqlOverallPerformanceDashboard
-                  { pdbObjectName = PerformanceObjectName "",
-                    pdbCounterName = PerformanceCounterName "",
-                    pdbInstanceName = PerformanceInstanceName "",
+                  { pdbObjectName = mkPerformanceObjectName "",
+                    pdbCounterName = mkPerformanceCounterName "",
+                    pdbInstanceName = mkPerformanceInstanceName "",
                     pdbCounterValue = PerformanceCounterValue 0
                   }
               ],

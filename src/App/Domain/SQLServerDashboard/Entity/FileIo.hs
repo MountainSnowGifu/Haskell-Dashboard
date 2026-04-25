@@ -16,11 +16,11 @@ import App.Domain.SQLServerDashboard.ValueObject
 import GHC.Generics (Generic)
 
 data MssqlFileIoDashboard = MssqlFileIoDashboard
-  { sqlServerDbName :: SqlServerDbName,
-    typeDescription :: TypeDescription,
-    numOfReads :: NumOfReads,
-    numOfWrites :: NumOfWrites,
-    avgReadMs :: AvgReadMs,
-    avgWriteMs :: AvgWriteMs
+  { fioSqlServerDbName :: SqlServerDbName,
+    fioTypeDescription :: TypeDescription,
+    fioNumOfReads :: NumOfReads,
+    fioNumOfWrites :: NumOfWrites,
+    fioAvgReadMs :: AvgReadMs,
+    fioAvgWriteMs :: AvgWriteMs
   }
   deriving (Show, Eq, Generic)

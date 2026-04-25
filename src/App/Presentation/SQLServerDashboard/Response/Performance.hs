@@ -9,10 +9,10 @@ where
 import App.Domain.SQLServerDashboard.Entity (MssqlOverallPerformanceDashboard)
 import qualified App.Domain.SQLServerDashboard.Entity as Entity
 import App.Domain.SQLServerDashboard.ValueObject
-  ( PerformanceCounterName (..),
-    PerformanceCounterValue (..),
-    PerformanceInstanceName (..),
-    PerformanceObjectName (..),
+  ( PerformanceCounterValue (..),
+    unPerformanceCounterName,
+    unPerformanceInstanceName,
+    unPerformanceObjectName,
   )
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
@@ -32,10 +32,10 @@ instance FromJSON MssqlOverallPerformanceDashboardResponse
 
 toMssqlOverallPerformanceDashboardResponse :: MssqlOverallPerformanceDashboard -> MssqlOverallPerformanceDashboardResponse
 toMssqlOverallPerformanceDashboardResponse dashboard =
-  let PerformanceObjectName objName = Entity.pdbObjectName dashboard
-      PerformanceCounterName counterName = Entity.pdbCounterName dashboard
-      PerformanceInstanceName instanceName = Entity.pdbInstanceName dashboard
-      PerformanceCounterValue counterValue = Entity.pdbCounterValue dashboard
+  let PerformanceCounterValue counterValue = Entity.pdbCounterValue dashboard
+      objName = unPerformanceObjectName (Entity.pdbObjectName dashboard)
+      counterName = unPerformanceCounterName (Entity.pdbCounterName dashboard)
+      instanceName = unPerformanceInstanceName (Entity.pdbInstanceName dashboard)
    in MssqlOverallPerformanceDashboardResponse
         { pdbObjectName = objName,
           pdbCounterName = counterName,
