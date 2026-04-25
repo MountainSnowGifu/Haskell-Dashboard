@@ -5,32 +5,29 @@ module Main where
 import App.Core.Config (Config (..))
 import App.Infrastructure.Database.SqlServer (createMSSQLPool)
 import App.Server.Router (runServant)
-import Configuration.Dotenv (defaultConfig, loadFile)
 import qualified Database.MSSQLServer.Connection as MSSQL
-import qualified Env
+import Data.List (isPrefixOf)
+import System.Environment (getEnv, setEnv)
+import System.IO.Error (catchIOError, isDoesNotExistError)
 
-data DbEnv = DbEnv
-  { dbHost :: String,
-    dbPort :: String,
-    dbName :: String,
-    dbUser :: String,
-    dbPassword :: String,
-    dbPoolSize :: Int
-  }
-
-dbEnvParser :: Env.Parser Env.Error DbEnv
-dbEnvParser =
-  DbEnv
-    <$> Env.var Env.str "MSSQL_HOST" (Env.help "SQL Server host")
-    <*> Env.var Env.str "MSSQL_PORT" (Env.help "SQL Server port")
-    <*> Env.var Env.str "MSSQL_DATABASE" (Env.help "SQL Server database name")
-    <*> Env.var Env.str "MSSQL_USER" (Env.help "SQL Server user")
-    <*> Env.var Env.str "MSSQL_PASSWORD" (Env.help "SQL Server password")
-    <*> Env.var Env.auto "MSSQL_POOL_SIZE" (Env.help "SQL Server connection pool size")
+loadDotEnv :: FilePath -> IO ()
+loadDotEnv path = do
+  contents <- readFile path `catchIOError` \e ->
+    if isDoesNotExistError e then return "" else ioError e
+  mapM_ setEnvLine (lines contents)
+  where
+    setEnvLine line
+      | "#" `isPrefixOf` line = return ()
+      | null line = return ()
+      | otherwise =
+          let (key, rest) = break (== '=') line
+           in case rest of
+                ('=' : val) -> setEnv key val
+                _ -> return ()
 
 main :: IO ()
 main = do
-  loadFile defaultConfig
+  loadDotEnv ".env"
 
   let servantConfig =
         Config
@@ -40,16 +37,21 @@ main = do
           }
   print servantConfig
 
-  dbEnv <- Env.parse (Env.header "SQL Server configuration") dbEnvParser
+  dbHost <- getEnv "MSSQL_HOST"
+  dbPort <- getEnv "MSSQL_PORT"
+  dbDatabase <- getEnv "MSSQL_DATABASE"
+  dbUser <- getEnv "MSSQL_USER"
+  dbPassword <- getEnv "MSSQL_PASSWORD"
+  dbPoolSize <- read <$> getEnv "MSSQL_POOL_SIZE"
 
   let sqlserverInfo =
         MSSQL.defaultConnectInfo
-          { MSSQL.connectHost = dbHost dbEnv,
-            MSSQL.connectPort = dbPort dbEnv,
-            MSSQL.connectDatabase = dbName dbEnv,
-            MSSQL.connectUser = dbUser dbEnv,
-            MSSQL.connectPassword = dbPassword dbEnv
+          { MSSQL.connectHost = dbHost,
+            MSSQL.connectPort = dbPort,
+            MSSQL.connectDatabase = dbDatabase,
+            MSSQL.connectUser = dbUser,
+            MSSQL.connectPassword = dbPassword
           }
-  sqlserverPool <- createMSSQLPool sqlserverInfo (dbPoolSize dbEnv)
+  sqlserverPool <- createMSSQLPool sqlserverInfo dbPoolSize
 
   runServant servantConfig sqlserverInfo sqlserverPool

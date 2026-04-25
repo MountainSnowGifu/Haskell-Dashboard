@@ -132,8 +132,8 @@ executable SqlserverMonitoring
                         , async
                         , http-types
                         , effectful-core
-                        , dotenv
-                        , envparse
+                        --, dotenv
+                        --, envparse
 
     -- Directories containing source files.
     hs-source-dirs:   app, src
