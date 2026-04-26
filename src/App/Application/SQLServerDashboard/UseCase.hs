@@ -13,6 +13,7 @@ module App.Application.SQLServerDashboard.UseCase
 where
 
 import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCommand (..))
+import App.Application.SQLServerDashboard.ConnectionTarget (SqlServerConnectionTarget (..))
 import App.Application.SQLServerDashboard.Repository (DashboardRepo)
 import App.Application.SQLServerDashboard.Repository qualified as DashboardRepo
 import App.Application.SQLServerDashboard.ServerReachability (ServerReachability, checkServerReachable)
@@ -27,16 +28,15 @@ import App.Domain.SQLServerDashboard.ValueObject
   )
 import Data.String (fromString)
 import Data.Text (Text)
-import Database.MSSQLServer.Connection (ConnectInfo (..))
 import Effectful (Eff, IOE, liftIO, (:>))
 
 type DashboardRunner = forall a. Eff '[DashboardRepo, ServerReachability, IOE] a -> IO a
 
-fetchMssqlFileIoDashboard :: (DashboardRepo :> es, ServerReachability :> es, IOE :> es) => ConnectInfo -> [Text] -> Eff es MssqlHealthDashboard
-fetchMssqlFileIoDashboard cfg dbNames = do
+fetchMssqlFileIoDashboard :: (DashboardRepo :> es, ServerReachability :> es, IOE :> es) => SqlServerConnectionTarget -> [Text] -> Eff es MssqlHealthDashboard
+fetchMssqlFileIoDashboard target dbNames = do
   liftIO $ putStrLn "[DashboardRepo] fetching dashboard data from SQL Server..."
-  let dbHost = connectHost cfg
-      dbPort = connectPort cfg
+  let dbHost = sqlServerHost target
+      dbPort = sqlServerPortText target
 
   reachable <- checkServerReachable dbHost dbPort
   if not reachable

@@ -2,6 +2,7 @@
 
 module Main where
 
+import App.Application.SQLServerDashboard.ConnectionTarget (SqlServerConnectionTarget (..))
 import App.Core.Config (Config (..))
 import App.Infrastructure.Database.SqlServer (createMSSQLPool)
 import App.Server.Router (runServant)
@@ -53,6 +54,11 @@ main = do
             MSSQL.connectUser = dbUser,
             MSSQL.connectPassword = dbPassword
           }
+      sqlserverTarget =
+        SqlServerConnectionTarget
+          { sqlServerHost = dbHost,
+            sqlServerPortText = dbPort
+          }
   sqlserverPool <- createMSSQLPool sqlserverInfo dbPoolSize
 
-  runServant servantConfig sqlserverInfo sqlserverPool
+  runServant servantConfig sqlserverInfo sqlserverTarget sqlserverPool

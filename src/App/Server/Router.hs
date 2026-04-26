@@ -6,6 +6,7 @@ module App.Server.Router
   )
 where
 
+import App.Application.SQLServerDashboard.ConnectionTarget (SqlServerConnectionTarget)
 import App.Application.SQLServerDashboard.Subscription (DashboardSubscription (..))
 import App.Application.SQLServerDashboard.UseCase (DashboardRunner)
 import App.Core.Config (Config (..))
@@ -51,10 +52,10 @@ import Servant
 
 -- import System.Posix.Signals (Handler (..), installHandler, sigINT, sigTERM)
 
-server :: ConnectInfo -> [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Server API
-server connInfo dbNames runner sub connCountRef =
+server :: ConnectInfo -> SqlServerConnectionTarget -> [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Server API
+server connInfo target dbNames runner sub connCountRef =
   healthHandler connInfo
-    :<|> sqlServerDashboardHandler connInfo dbNames runner
+    :<|> sqlServerDashboardHandler target dbNames runner
     :<|> Tagged (websocketsOr defaultConnectionOptions (sqlServerDashboardWSHandler sub connCountRef) fallback)
     :<|> sqlServerConnectionsHandler connCountRef
   where
@@ -68,13 +69,13 @@ corsPolicy =
       corsRequestHeaders = ["Content-Type", "Authorization"]
     }
 
-app :: ConnectInfo -> [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Application
-app connInfo dbNames runner sub connCountRef =
+app :: ConnectInfo -> SqlServerConnectionTarget -> [Text] -> DashboardRunner -> DashboardSubscription -> TVar Int -> Application
+app connInfo target dbNames runner sub connCountRef =
   cors (const $ Just corsPolicy) $
-    serve combinedAPI (server connInfo dbNames runner sub connCountRef)
+    serve combinedAPI (server connInfo target dbNames runner sub connCountRef)
 
-runServant :: Config -> ConnectInfo -> MSSQLPool -> IO ()
-runServant servantConfig connInfo sqlserverPool = do
+runServant :: Config -> ConnectInfo -> SqlServerConnectionTarget -> MSSQLPool -> IO ()
+runServant servantConfig connInfo target sqlserverPool = do
   latestRef <-
     newTVarIO
       ( MssqlHealthDashboard
@@ -111,11 +112,11 @@ runServant servantConfig connInfo sqlserverPool = do
           }
 
   let dbNames = monitoredDatabases servantConfig
-  void $ async (pollDashboard connInfo dbNames pollingRunner)
+  void $ async (pollDashboard target dbNames pollingRunner)
 
   let settings =
         defaultSettings
           & setPort (port servantConfig)
           & setHost (fromString (host servantConfig))
 
-  runSettings settings (app connInfo dbNames runner sub connCountRef)
+  runSettings settings (app connInfo target dbNames runner sub connCountRef)
