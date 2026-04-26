@@ -7,6 +7,7 @@ module App.Domain.SQLServerDashboard.Entity.Health
 where
 
 import App.Domain.SQLServerDashboard.Entity.ActiveRequest (MssqlActiveRequestDashboard)
+import App.Domain.SQLServerDashboard.Entity.Backup (MssqlBackupDashboard)
 import App.Domain.SQLServerDashboard.Entity.BlockStatus (MssqlBlockStatusDashboard)
 import App.Domain.SQLServerDashboard.Entity.DbStatus (MssqlDbStatusDashboard)
 import App.Domain.SQLServerDashboard.Entity.FileIo (MssqlFileIoDashboard)
@@ -37,6 +38,7 @@ data MssqlDbHealthDashboard = MssqlDbHealthDashboard
     dbhMssqlActiveRequestDashboard :: [MssqlActiveRequestDashboard],
     dbhMssqlDbStatusDashboard :: MssqlDbStatusDashboard,
     dbhMssqlBlockStatusDashboard :: [MssqlBlockStatusDashboard],
-    dbhMssqlLogUsageDashboard :: MssqlLogUsageDashboard
+    dbhMssqlLogUsageDashboard :: MssqlLogUsageDashboard,
+    dbhMssqlBackupDashboard :: [MssqlBackupDashboard]
   }
   deriving (Show, Eq, Generic)

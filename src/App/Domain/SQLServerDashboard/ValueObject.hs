@@ -1,5 +1,6 @@
 module App.Domain.SQLServerDashboard.ValueObject
-  ( module App.Domain.SQLServerDashboard.ValueObject.Connection,
+  ( module App.Domain.SQLServerDashboard.ValueObject.Backup,
+    module App.Domain.SQLServerDashboard.ValueObject.Connection,
     module App.Domain.SQLServerDashboard.ValueObject.FileIo,
     module App.Domain.SQLServerDashboard.ValueObject.Session,
     module App.Domain.SQLServerDashboard.ValueObject.DbStatus,
@@ -9,6 +10,7 @@ module App.Domain.SQLServerDashboard.ValueObject
   )
 where
 
+import App.Domain.SQLServerDashboard.ValueObject.Backup
 import App.Domain.SQLServerDashboard.ValueObject.BlockStatus
 import App.Domain.SQLServerDashboard.ValueObject.Connection
 import App.Domain.SQLServerDashboard.ValueObject.DbStatus

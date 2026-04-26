@@ -14,6 +14,7 @@ import App.Application.SQLServerDashboard.Command (CreateMssqlFileIoDashboardCom
 import App.Application.SQLServerDashboard.Repository (DashboardRepo (..))
 import App.Domain.SQLServerDashboard.Entity
   ( MssqlActiveRequestDashboard (..),
+    MssqlBackupDashboard (..),
     MssqlBlockStatusDashboard (..),
     MssqlDbStatusDashboard (..),
     MssqlFileIoDashboard (..),
@@ -23,6 +24,12 @@ import App.Domain.SQLServerDashboard.Entity
   )
 import App.Domain.SQLServerDashboard.ValueObject
   ( AlertLevel (..),
+    BackupFinishDate (..),
+    BackupPhysicalDeviceName (..),
+    BackupServerName (..),
+    BackupStartDate (..),
+    BackupType (..),
+    BackupUserName (..),
     Command (..),
     CpuTime (..),
     HostName (..),
@@ -88,6 +95,9 @@ type BlockStatusRow = (Int, Int, LT.Text, LT.Text, Int, LT.Text, LT.Text, LT.Tex
 
 -- (db_name, total_log_size_mb, used_log_space_mb, used_log_space_percent, alert_level)
 type LogUsageRow = (LT.Text, Float, Float, Float, LT.Text)
+
+-- (database_name, backup_type, backup_start_date, backup_finish_date, physical_device_name, user_name, server_name)
+type BackupRow = (LT.Text, LT.Text, LT.Text, LT.Text, LT.Text, LT.Text, LT.Text)
 
 sessionQuery :: Text -> Text
 sessionQuery dbName =
@@ -279,6 +289,41 @@ toLogUsageEntity (dbName, totalSize, usedSpace, usedPercent, alert) =
       lugAlertLevel = AlertLevel (LT.toStrict alert)
     }
 
+backupQuery :: Text -> Text
+backupQuery dbName =
+  "SELECT \
+  \    bs.database_name, \
+  \    CASE bs.type \
+  \        WHEN 'D' THEN N'Full' \
+  \        WHEN 'I' THEN N'Differential' \
+  \        WHEN 'L' THEN N'Log' \
+  \        ELSE bs.type \
+  \    END AS backup_type, \
+  \    CONVERT(NVARCHAR(23), bs.backup_start_date, 121) AS backup_start_date, \
+  \    CONVERT(NVARCHAR(23), bs.backup_finish_date, 121) AS backup_finish_date, \
+  \    ISNULL(bmf.physical_device_name, N'') AS physical_device_name, \
+  \    ISNULL(bs.user_name, N'') AS user_name, \
+  \    bs.server_name \
+  \FROM msdb.dbo.backupset bs \
+  \LEFT JOIN msdb.dbo.backupmediafamily bmf \
+  \    ON bs.media_set_id = bmf.media_set_id \
+  \WHERE bs.database_name = '"
+    <> dbName
+    <> "' \
+       \ORDER BY bs.backup_finish_date DESC"
+
+toBackupEntity :: BackupRow -> MssqlBackupDashboard
+toBackupEntity (dbName, backupType, startDate, finishDate, physicalDevice, userName, serverName) =
+  MssqlBackupDashboard
+    { bakSqlServerDbName = SqlServerDbName (LT.toStrict dbName),
+      bakBackupType = BackupType (LT.toStrict backupType),
+      bakBackupStartDate = BackupStartDate (LT.toStrict startDate),
+      bakBackupFinishDate = BackupFinishDate (LT.toStrict finishDate),
+      bakBackupPhysicalDeviceName = BackupPhysicalDeviceName (LT.toStrict physicalDevice),
+      bakBackupUserName = BackupUserName (LT.toStrict userName),
+      bakBackupServerName = BackupServerName (LT.toStrict serverName)
+    }
+
 toEntity :: FileIoRow -> Either String MssqlFileIoDashboard
 toEntity (name, typeDesc, numReads, numWrites, avgRead, avgWrite) = do
   numOfReads' <- mkNumOfReads numReads
@@ -398,3 +443,16 @@ runDashboardRepo pool = interpret $ \_ -> \case
       case rows of
         [] -> ioError (userError "No log usage data returned for the given database")
         (r : _) -> return (toLogUsageEntity r)
+  FetchMssqlBackupDashboardOp cmd ->
+    liftIO $ withMSSQLConn pool $ \conn -> do
+      rows <-
+        rpcRows
+          =<< ( rpc
+                  conn
+                  ( RpcQuery
+                      SP_ExecuteSql
+                      (nvarcharVal "" (Just (backupQuery (cmdDbName cmd))))
+                  ) ::
+                  IO (RpcResponse () [BackupRow])
+              )
+      return (map toBackupEntity rows)

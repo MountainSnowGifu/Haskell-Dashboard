@@ -1,0 +1,2 @@
+Windows / Linux: Ctrl + Shift + P
+restart haskell lsp server

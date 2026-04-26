@@ -1,5 +1,6 @@
 module App.Domain.SQLServerDashboard.Entity
   ( module App.Domain.SQLServerDashboard.Entity.ActiveRequest,
+    module App.Domain.SQLServerDashboard.Entity.Backup,
     module App.Domain.SQLServerDashboard.Entity.BlockStatus,
     module App.Domain.SQLServerDashboard.Entity.DbStatus,
     module App.Domain.SQLServerDashboard.Entity.FileIo,
@@ -11,6 +12,7 @@ module App.Domain.SQLServerDashboard.Entity
 where
 
 import App.Domain.SQLServerDashboard.Entity.ActiveRequest
+import App.Domain.SQLServerDashboard.Entity.Backup
 import App.Domain.SQLServerDashboard.Entity.BlockStatus
 import App.Domain.SQLServerDashboard.Entity.DbStatus
 import App.Domain.SQLServerDashboard.Entity.FileIo

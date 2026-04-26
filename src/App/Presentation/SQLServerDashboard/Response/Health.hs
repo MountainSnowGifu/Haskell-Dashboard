@@ -22,6 +22,10 @@ import App.Presentation.SQLServerDashboard.Response.ActiveRequest
   ( MssqlActiveRequestDashboardResponse,
     toMssqlActiveRequestDashboardResponse,
   )
+import App.Presentation.SQLServerDashboard.Response.Backup
+  ( MssqlBackupDashboardResponse,
+    toMssqlBackupDashboardResponse,
+  )
 import App.Presentation.SQLServerDashboard.Response.BlockStatus
   ( MssqlBlockStatusDashboardResponse,
     toBlockStatusResponse,
@@ -83,7 +87,8 @@ data MssqlDbHealthDashboardResponse = MssqlDbHealthDashboardResponse
     mssqlActiveRequestDashboard :: [MssqlActiveRequestDashboardResponse],
     mssqlDbStatusDashboard :: MssqlDbStatusDashboardResponse,
     mssqlBlockStatusDashboard :: [MssqlBlockStatusDashboardResponse],
-    mssqlLogUsageDashboardResponse :: MssqlLogUsageDashboardResponse
+    mssqlLogUsageDashboardResponse :: MssqlLogUsageDashboardResponse,
+    mssqlBackupDashboardResponse :: [MssqlBackupDashboardResponse]
   }
   deriving (Show, Generic)
 
@@ -100,6 +105,7 @@ toMssqlDbHealthDashboardResponse dashboard =
       dbStatus = toMssqlDbStatusDashboardResponse (Entity.dbhMssqlDbStatusDashboard dashboard)
       blockStatus = map toBlockStatusResponse (Entity.dbhMssqlBlockStatusDashboard dashboard)
       logUsage = toMssqlLogUsageDashboardResponse (Entity.dbhMssqlLogUsageDashboard dashboard)
+      backup = map toMssqlBackupDashboardResponse (Entity.dbhMssqlBackupDashboard dashboard)
    in MssqlDbHealthDashboardResponse
         { dbHealthSqlServerDbName = dbName,
           mssqlFileIoDashboard = fileIo,
@@ -107,7 +113,8 @@ toMssqlDbHealthDashboardResponse dashboard =
           mssqlActiveRequestDashboard = activeRequests,
           mssqlDbStatusDashboard = dbStatus,
           mssqlBlockStatusDashboard = blockStatus,
-          mssqlLogUsageDashboardResponse = logUsage
+          mssqlLogUsageDashboardResponse = logUsage,
+          mssqlBackupDashboardResponse = backup
         }
 
 newtype ConnectionCountResponse = ConnectionCountResponse

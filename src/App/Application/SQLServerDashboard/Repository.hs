@@ -13,6 +13,7 @@ module App.Application.SQLServerDashboard.Repository
     getMssqlOverallPerformanceDashboard,
     getMssqlBlockStatusDashboard,
     getMssqlLogUsageDashboard,
+    getMssqlBackupDashboard,
   )
 where
 
@@ -29,6 +30,7 @@ data DashboardRepo :: Effect where
   FetchMssqlOverallPerformanceDashboardOp :: CreateMssqlFileIoDashboardCommand -> DashboardRepo m [MssqlOverallPerformanceDashboard]
   FetchMssqlBlockStatusDashboardOp :: CreateMssqlFileIoDashboardCommand -> DashboardRepo m [MssqlBlockStatusDashboard]
   FetchMssqlLogUsageDashboardOp :: CreateMssqlFileIoDashboardCommand -> DashboardRepo m MssqlLogUsageDashboard
+  FetchMssqlBackupDashboardOp :: CreateMssqlFileIoDashboardCommand -> DashboardRepo m [MssqlBackupDashboard]
 
 type instance DispatchOf DashboardRepo = Dynamic
 
@@ -52,3 +54,6 @@ getMssqlBlockStatusDashboard cmd = send (FetchMssqlBlockStatusDashboardOp cmd)
 
 getMssqlLogUsageDashboard :: (DashboardRepo :> es) => CreateMssqlFileIoDashboardCommand -> Eff es MssqlLogUsageDashboard
 getMssqlLogUsageDashboard cmd = send (FetchMssqlLogUsageDashboardOp cmd)
+
+getMssqlBackupDashboard :: (DashboardRepo :> es) => CreateMssqlFileIoDashboardCommand -> Eff es [MssqlBackupDashboard]
+getMssqlBackupDashboard cmd = send (FetchMssqlBackupDashboardOp cmd)
