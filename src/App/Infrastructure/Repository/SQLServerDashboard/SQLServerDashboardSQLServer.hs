@@ -292,7 +292,7 @@ toLogUsageEntity (dbName, totalSize, usedSpace, usedPercent, alert) =
 backupQuery :: Text -> Text
 backupQuery dbName =
   "SELECT \
-  \    bs.database_name, \
+  \    TOP (5) bs.database_name, \
   \    CASE bs.type \
   \        WHEN 'D' THEN N'Full' \
   \        WHEN 'I' THEN N'Differential' \
