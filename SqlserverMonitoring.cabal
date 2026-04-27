@@ -128,7 +128,8 @@ executable SqlserverMonitoring
                         ,aeson
                         , servant-server
                         , wai
-                        , warp
+                        , warp == 3.4.12
+                        --warp == 3.4.13 はwindowsで動かないため、3.4.12を指定
                         , time
                         , wai-cors
                         , text
